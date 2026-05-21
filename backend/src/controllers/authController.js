@@ -1,8 +1,10 @@
+'use strict';
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const emailService = require('../utils/emailService');
 
-// Login
+// ── Login ─────────────────────────────────────────────────────────────────────
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -13,7 +15,6 @@ exports.login = async (req, res) => {
 
     const user = users[0];
     const passwordIsValid = await bcrypt.compare(password, user.password_hash);
-
     if (!passwordIsValid) {
       return res.status(401).json({ accessToken: null, message: 'Invalid Password!' });
     }
@@ -24,15 +25,14 @@ exports.login = async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    // Update last login (SQLite uses ? placeholders)
     await db.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
 
     res.status(200).json({
-      id: user.id,
-      username: user.username,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
+      id:         user.id,
+      username:   user.username,
+      full_name:  user.full_name,
+      email:      user.email,
+      role:       user.role,
       department: user.department,
       accessToken: token,
     });
@@ -41,7 +41,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// Create User (Super Admin only)
+// ── Create User (IT Team / Super Admin only) ──────────────────────────────────
 exports.createUser = async (req, res) => {
   const { full_name, username, email, password, role, department } = req.body;
   try {
@@ -51,6 +51,13 @@ exports.createUser = async (req, res) => {
       [full_name, username, email, hashedPassword, role, department]
     );
     const [newUser] = await db.query('SELECT id, username, role FROM users WHERE email = ?', [email]);
+
+    // ── Email: Send welcome email with login credentials ──────────────────
+    // Fire-and-forget — never blocks HTTP response, never crashes on failure
+    emailService.sendUserCreatedEmail(email, full_name, password).catch(e => {
+      console.error('[Email] sendUserCreatedEmail error:', e.message);
+    });
+
     res.status(201).json(newUser);
   } catch (err) {
     console.error('Create user error:', err);
@@ -58,17 +65,19 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// Get all users
+// ── Get all users ─────────────────────────────────────────────────────────────
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await db.query('SELECT id, full_name, username, email, role, department, is_active, last_login FROM users ORDER BY id ASC');
+    const users = await db.query(
+      'SELECT id, full_name, username, email, role, department, is_active, last_login FROM users ORDER BY id ASC'
+    );
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Update user details
+// ── Update user ───────────────────────────────────────────────────────────────
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
   const { full_name, role, department, is_active } = req.body;
@@ -84,7 +93,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Toggle user active/inactive
+// ── Toggle active/inactive ────────────────────────────────────────────────────
 exports.toggleUserActive = async (req, res) => {
   const { id } = req.params;
   try {
@@ -99,7 +108,7 @@ exports.toggleUserActive = async (req, res) => {
   }
 };
 
-// Reset Password
+// ── Reset Password ────────────────────────────────────────────────────────────
 exports.resetPassword = async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;

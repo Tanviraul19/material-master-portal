@@ -1,634 +1,369 @@
-const nodemailer = require('nodemailer');
+'use strict';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *  Material Master Portal — Centralized Email Service
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *  SAFE TO LOAD even if nodemailer is not installed.
+ *  App will NEVER crash due to email failures.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
 
-// Load environment variables (dotenv is loaded in src/index.js)
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-// Configure SMTP transporter
-let transporter = null;
+// ── Safe nodemailer require ───────────────────────────────────────────────────
+// If nodemailer is missing (npm install not run yet), gracefully fall back
+// to console-only logging instead of crashing the entire app.
+let nodemailer = null;
 try {
-  if (EMAIL_USER && EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465, // true for 465, false for other ports
-      auth: {
-        user: EMAIL_USER,
-        pass: EMAIL_PASS,
-      },
-    });
-    console.log(`SMTP Mail Transporter initialized for user: ${EMAIL_USER}`);
-  } else {
-    console.warn('WARNING: SMTP credentials not fully configured in environment variables. Emails will be logged to console instead.');
-  }
-} catch (error) {
-  console.error('Failed to initialize SMTP transporter:', error);
+  nodemailer = require('nodemailer');
+} catch (_e) {
+  console.warn('⚠️  [EmailService] nodemailer not found. Run: cd backend && npm install');
+  console.warn('    Emails will be logged to console only until nodemailer is installed.');
 }
 
-/**
- * Maps a real database email and role to the appropriate temporary test email.
- * This satisfies the strict testing mapping requirement, while remaining configurable.
- * 
- * Mapping criteria:
- * - USER role -> raulankesh96@gmail.com
- * - ADMIN / IT TEAM / SUPER ADMIN role -> tanviraul196@gmail.com
- * - GST Team / fallback -> tanviraul09@gmail.com
- * - PLANT_HEAD / STORE / PURCHASE / DEPARTMENT (Mechanical/Electrical) -> anushkadange5@gmail.com
- */
+// ── Environment config ────────────────────────────────────────────────────────
+const SMTP_HOST    = process.env.SMTP_HOST    || 'smtp.gmail.com';
+const SMTP_PORT    = parseInt(process.env.SMTP_PORT || '587', 10);
+const EMAIL_USER   = process.env.EMAIL_USER;
+const EMAIL_PASS   = process.env.EMAIL_PASS;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// ── SMTP Transporter ──────────────────────────────────────────────────────────
+let transporter = null;
+try {
+  if (nodemailer && EMAIL_USER && EMAIL_PASS) {
+    transporter = nodemailer.createTransport({
+      host:   SMTP_HOST,
+      port:   SMTP_PORT,
+      secure: SMTP_PORT === 465,
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+    });
+    console.log(`✅ [EmailService] SMTP ready — sender: ${EMAIL_USER} via ${SMTP_HOST}:${SMTP_PORT}`);
+  } else if (nodemailer && (!EMAIL_USER || !EMAIL_PASS)) {
+    console.warn('⚠️  [EmailService] EMAIL_USER or EMAIL_PASS missing in .env — emails will be console-only.');
+  }
+} catch (initErr) {
+  console.error('❌ [EmailService] SMTP init failed:', initErr.message);
+  transporter = null;
+}
+
+// ── Test Email Role Mapping ───────────────────────────────────────────────────
+// Maps workflow roles → test inboxes (configurable via .env)
 function getRecipientEmail(role, dbEmail) {
-  // If explicitly configured in environment, prioritize those overrides
-  const testUser = process.env.TEST_USER_EMAIL || 'raulankesh96@gmail.com';
-  const testAdmin = process.env.TEST_ADMIN_EMAIL || 'tanviraul196@gmail.com';
-  const testApprover = process.env.TEST_APPROVER_EMAIL || 'tanviraul09@gmail.com';
+  const testUser      = process.env.TEST_USER_EMAIL       || 'raulankesh96@gmail.com';
+  const testAdmin     = process.env.TEST_ADMIN_EMAIL      || 'tanviraul196@gmail.com';
+  const testApprover  = process.env.TEST_APPROVER_EMAIL   || 'tanviraul09@gmail.com';
   const testPlantDept = process.env.TEST_PLANT_DEPT_EMAIL || 'anushkadange5@gmail.com';
 
-  const roleName = String(role || '').toUpperCase();
+  const r = String(role || '').toUpperCase().trim();
 
-  if (roleName === 'USER') {
-    return testUser;
-  }
-  if (['IT TEAM', 'SUPER ADMIN', 'ADMIN'].includes(roleName)) {
-    return testAdmin;
-  }
-  if (roleName === 'GST TEAM') {
-    return testApprover;
-  }
-  if ([
-    'PLANT HEAD', 'STORE HEAD', 'PURCHASE TEAM', 
-    'MECHANICAL TEAM', 'ELECTRICAL TEAM', 'DEPARTMENT'
-  ].includes(roleName)) {
-    return testPlantDept;
-  }
+  if (r === 'USER')                                                   return testUser;
+  if (['IT TEAM', 'SUPER ADMIN', 'ADMIN'].includes(r))               return testAdmin;
+  if (r === 'GST TEAM')                                               return testApprover;
+  if (['PLANT HEAD', 'STORE HEAD', 'PURCHASE TEAM',
+       'MECHANICAL TEAM', 'ELECTRICAL TEAM', 'DEPARTMENT'].includes(r)) return testPlantDept;
 
-  // Fallback default
   return dbEmail || testApprover;
 }
 
-/**
- * Reusable HTML Email Template Wrapper
- * Uses a gorgeous Slate-Indigo theme, responsive cards, and clean typography.
- */
-function buildHtmlTemplate({ title, badgeText, badgeColor, preheader, contentHtml, actionLink, actionText }) {
-  const primaryColor = '#4f46e5'; // Indigo
-  const textColor = '#1e293b'; // Slate
-  const bgLight = '#f8fafc'; // White/gray
+// ── HTML Email Template ───────────────────────────────────────────────────────
+function buildHtmlTemplate({ title, badgeText, badgeColor, contentHtml, actionLink, actionText }) {
+  const brand  = '#1e1b4b';
+  const brand2 = '#312e81';
+  const accent = '#4f46e5';
+  const border = '#e2e8f0';
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title}</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          background-color: #f1f5f9;
-          color: ${textColor};
-          margin: 0;
-          padding: 0;
-          -webkit-font-smoothing: antialiased;
-        }
-        .wrapper {
-          width: 100%;
-          background-color: #f1f5f9;
-          padding: 30px 10px;
-          box-sizing: border-box;
-        }
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          background-color: #ffffff;
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          border: 1px solid #e2e8f0;
-        }
-        .header {
-          background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-          padding: 32px 40px;
-          text-align: left;
-          position: relative;
-        }
-        .logo-text {
-          font-size: 20px;
-          font-weight: 800;
-          color: #ffffff;
-          letter-spacing: -0.5px;
-          margin: 0;
-          text-transform: uppercase;
-        }
-        .logo-sub {
-          font-size: 11px;
-          color: #818cf8;
-          font-weight: 600;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-          margin-top: 2px;
-        }
-        .badge {
-          display: inline-block;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 6px 12px;
-          border-radius: 9999px;
-          color: #ffffff;
-          background-color: ${badgeColor || primaryColor};
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-top: 15px;
-        }
-        .content {
-          padding: 40px;
-        }
-        .content h1 {
-          font-size: 22px;
-          font-weight: 800;
-          color: #0f172a;
-          margin-top: 0;
-          margin-bottom: 12px;
-          letter-spacing: -0.5px;
-        }
-        .content p {
-          font-size: 15px;
-          line-height: 1.6;
-          color: #475569;
-          margin-top: 0;
-          margin-bottom: 24px;
-        }
-        .table-container {
-          background-color: ${bgLight};
-          border: 1px solid #f1f5f9;
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 30px;
-        }
-        .table-title {
-          font-size: 11px;
-          font-weight: 800;
-          text-transform: uppercase;
-          color: #94a3b8;
-          letter-spacing: 1px;
-          margin-top: 0;
-          margin-bottom: 16px;
-          border-bottom: 1px solid #e2e8f0;
-          padding-bottom: 8px;
-        }
-        .data-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        .data-table td {
-          padding: 10px 0;
-          font-size: 13.5px;
-          vertical-align: top;
-        }
-        .data-table td.label {
-          font-weight: 700;
-          color: #64748b;
-          width: 35%;
-        }
-        .data-table td.value {
-          color: #0f172a;
-          font-weight: 600;
-        }
-        .cta-container {
-          text-align: center;
-          margin: 35px 0 15px 0;
-        }
-        .btn-cta {
-          display: inline-block;
-          font-size: 14px;
-          font-weight: 700;
-          color: #ffffff !important;
-          background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-          padding: 14px 32px;
-          border-radius: 12px;
-          text-decoration: none;
-          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-          transition: all 0.2s ease;
-        }
-        .btn-secondary-cta {
-          display: inline-block;
-          font-size: 13px;
-          font-weight: 700;
-          color: #4f46e5 !important;
-          background-color: #eff6ff;
-          border: 1px dashed #bfdbfe;
-          padding: 10px 24px;
-          border-radius: 10px;
-          text-decoration: none;
-          margin: 0 6px;
-        }
-        .footer {
-          background-color: #f8fafc;
-          padding: 30px 40px;
-          text-align: center;
-          border-top: 1px solid #e2e8f0;
-        }
-        .footer p {
-          font-size: 12px;
-          color: #94a3b8;
-          margin: 0 0 10px 0;
-          line-height: 1.5;
-        }
-        .footer a {
-          color: #4f46e5;
-          text-decoration: none;
-          font-weight: 600;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="wrapper">
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <div class="logo-text">Viraj Profiles</div>
-            <div class="logo-sub">Material Master Portal</div>
-            ${badgeText ? `<div class="badge">${badgeText}</div>` : ''}
-          </div>
-          <!-- Body -->
-          <div class="content">
-            ${contentHtml}
-            
-            ${actionLink ? `
-              <div class="cta-container">
-                <a href="${actionLink}" class="btn-cta" target="_blank">${actionText || 'Open Portal'}</a>
-              </div>
-            ` : ''}
-          </div>
-          <!-- Footer -->
-          <div class="footer">
-            <p>This is an automated workflow notification from the Material Master Portal.</p>
-            <p>© 2026 Viraj Profiles Ltd. All rights reserved.</p>
-            <p><a href="${FRONTEND_URL}">Access Portal</a> · <a href="${FRONTEND_URL}/settings">Account Settings</a></p>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const badgeHtml = badgeText
+    ? `<span style="display:inline-block;margin-top:14px;padding:5px 14px;border-radius:9999px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:#fff;background-color:${badgeColor || accent};">${badgeText}</span>`
+    : '';
+
+  const ctaHtml = actionLink
+    ? `<div style="text-align:center;margin:36px 0 8px;">
+         <a href="${actionLink}" target="_blank" style="display:inline-block;padding:14px 34px;background:linear-gradient(135deg,${accent} 0%,#4338ca 100%);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;box-shadow:0 4px 14px rgba(79,70,229,0.35);">
+           ${actionText || 'Open Portal'}
+         </a>
+       </div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:16px;overflow:hidden;border:1px solid ${border};box-shadow:0 10px 30px -5px rgba(0,0,0,0.07);">
+        <tr>
+          <td style="background:linear-gradient(135deg,${brand} 0%,${brand2} 100%);padding:32px 40px;">
+            <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-transform:uppercase;">Viraj Profiles</div>
+            <div style="font-size:11px;font-weight:600;color:#818cf8;letter-spacing:1px;text-transform:uppercase;margin-top:3px;">Material Master Portal</div>
+            ${badgeHtml}
+          </td>
+        </tr>
+        <tr><td style="padding:40px 40px 10px;">${contentHtml}${ctaHtml}</td></tr>
+        <tr>
+          <td style="background:#f8fafc;padding:24px 40px;border-top:1px solid ${border};text-align:center;">
+            <p style="margin:0 0 8px;font-size:11.5px;color:#94a3b8;line-height:1.6;">Automated workflow notification — Material Master Portal.<br>Do not reply to this email.</p>
+            <p style="margin:0;font-size:11.5px;color:#94a3b8;">© 2026 Viraj Profiles Ltd. &nbsp;·&nbsp;
+              <a href="${FRONTEND_URL}" style="color:${accent};text-decoration:none;font-weight:600;">Access Portal</a> &nbsp;·&nbsp;
+              <a href="${FRONTEND_URL}/settings" style="color:${accent};text-decoration:none;font-weight:600;">Settings</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
 }
 
-/**
- * Core send helper wrapper with error isolation.
- * Prevents SMTP server connection failures or unconfigured variables from crashing requests.
- */
+// ── Core Send Wrapper ─────────────────────────────────────────────────────────
+// NEVER throws. NEVER crashes the app. Always returns null on failure.
 async function sendMailSafe(options) {
   try {
-    const role = options.role || 'GST Team';
-    const mappedRecipient = getRecipientEmail(role, options.to);
-    
-    const mailOptions = {
-      from: `"Material Master Portal" <${EMAIL_USER || 'no-reply@masterportal.com'}>`,
-      to: mappedRecipient,
-      subject: options.subject,
-      html: options.html,
-    };
+    const { role, to, subject, html, trigger } = options;
+    const recipient = getRecipientEmail(role, to);
 
-    console.log(`[Email Attempt] Trigger: "${options.trigger}". Recipient Role: "${role}". Target: "${options.to}" -> Mapped To: "${mappedRecipient}". Subject: "${options.subject}"`);
+    console.log(`\n📧 [Email] trigger="${trigger}" | role="${role}" | db="${to}" | to="${recipient}"`);
+    console.log(`   subject: "${subject}"`);
 
-    if (transporter) {
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[Email Success] Message Sent: ${info.messageId}. Target: ${mappedRecipient}`);
-      return info;
-    } else {
-      console.warn(`[Email Skip] SMTP not configured. Logged content:\nSubject: ${options.subject}\nRecipient: ${mappedRecipient}\nTrigger: ${options.trigger}`);
+    if (!transporter) {
+      console.warn(`   ↳ [SKIP] SMTP not ready — check EMAIL_USER/EMAIL_PASS in .env`);
       return null;
     }
-  } catch (error) {
-    console.error(`[Email Error] Failed to send email for trigger "${options.trigger}":`, error.message || error);
-    // Suppress error to avoid application crash
+
+    const info = await transporter.sendMail({
+      from:    `"Material Master Portal" <${EMAIL_USER}>`,
+      to:      recipient,
+      subject: subject,
+      html:    html,
+    });
+
+    console.log(`   ↳ [SENT ✓] messageId=${info.messageId} to=${recipient}`);
+    return info;
+  } catch (err) {
+    console.error(`   ↳ [ERROR ✗] trigger="${options.trigger}": ${err.message}`);
     return null;
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EXPORTED WORKFLOW EMAILS
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+//  EXPORTED EMAIL TRIGGERS
+// ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * 1. Admin User Creation Email
- * Triggered when Admin creates a new user.
- */
+// 1. Admin creates new user → welcome email with credentials
 exports.sendUserCreatedEmail = async (userEmail, fullName, tempPassword) => {
   const loginUrl = `${FRONTEND_URL}/login`;
-  
+
   const contentHtml = `
-    <h1>Welcome, ${fullName}!</h1>
-    <p>An administrator has created your corporate account on the **Material Master Request & Approval Portal**.</p>
-    <p>Please use the temporary credentials below to sign in. For your security, you are required to change your password immediately after your first successful login.</p>
-    
-    <div class="table-container">
-      <div class="table-title">Your Portal Credentials</div>
-      <table class="data-table">
-        <tr>
-          <td class="label">Portal Link</td>
-          <td class="value"><a href="${loginUrl}">${loginUrl}</a></td>
-        </tr>
-        <tr>
-          <td class="label">Username/Email</td>
-          <td class="value" style="font-family: monospace;">${userEmail}</td>
-        </tr>
-        <tr>
-          <td class="label">Temporary Password</td>
-          <td class="value" style="font-family: monospace; font-size: 15px; color: #4f46e5;">${tempPassword}</td>
-        </tr>
-      </table>
-    </div>
-    
-    <p><strong>Next Steps:</strong> Click the "Login to Portal" button below, enter your credentials, and navigate to the <em>Settings</em> tab to update your password to a strong personal one.</p>
-  `;
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0f172a;">Welcome, ${fullName}!</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#475569;">
+      An administrator has created your account on the <strong>Material Master Request &amp; Approval Portal</strong>.
+      Use the credentials below to sign in for the first time.
+    </p>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#475569;">
+      ⚠️ <strong>Important:</strong> Please change your password after your first login.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:28px;">
+      <tr><td style="padding:20px 24px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">Your Login Credentials</div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;width:38%;">Portal URL</td>
+            <td style="padding:9px 0;font-size:13px;"><a href="${loginUrl}" style="color:#4f46e5;font-weight:600;">${loginUrl}</a></td>
+          </tr>
+          <tr>
+            <td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Username / Email</td>
+            <td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:700;color:#0f172a;">${userEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Temporary Password</td>
+            <td style="padding:9px 0;font-size:16px;font-family:monospace;font-weight:800;color:#4f46e5;letter-spacing:1px;">${tempPassword}</td>
+          </tr>
+        </table>
+        <p style="margin:14px 0 0;font-size:13px;color:#94a3b8;">Go to <strong>Settings</strong> after login to set a new password.</p>
+      </td></tr>
+    </table>`;
 
   return sendMailSafe({
-    to: userEmail,
-    role: 'USER', // mapped to raulankesh96@gmail.com
-    subject: 'Material Portal - Account Created Successfully',
+    to: userEmail, role: 'USER',
+    subject: 'Material Master Portal — Your Account Has Been Created',
     trigger: 'USER_CREATED',
     html: buildHtmlTemplate({
-      title: 'Your Account Has Been Created',
-      badgeText: 'New Account',
-      badgeColor: '#10b981', // Emerald
-      contentHtml,
-      actionLink: loginUrl,
-      actionText: 'Login to Portal'
-    })
+      title: 'Your Account Has Been Created', badgeText: 'New Account', badgeColor: '#10b981',
+      contentHtml, actionLink: loginUrl, actionText: 'Login to Portal →',
+    }),
   });
 };
 
-/**
- * 2. Request Creation Confirmation Email (To USER / Creator)
- * Triggered when USER creates a new request.
- */
+// 2. User submits new request → confirmation email
 exports.sendRequestCreatedEmail = async (creatorEmail, request) => {
-  const reqId = request.id;
-  const reqNum = request.req_number;
-  const portalUrl = `${FRONTEND_URL}/requests/my?id=${reqId}`;
+  const portalUrl = `${FRONTEND_URL}/requests/my?highlight=${request.id}`;
 
   const contentHtml = `
-    <h1>Request Submitted!</h1>
-    <p>Your Material Master Creation Request has been registered successfully in our workflow system.</p>
-    <p>The request has been routed to the **Plant Head** stage for initial review. You will receive real-time email notifications as your request moves through each approval layer.</p>
-    
-    <div class="table-container">
-      <div class="table-title">Request Specifications</div>
-      <table class="data-table">
-        <tr>
-          <td class="label">Request Number</td>
-          <td class="value" style="font-family: monospace;">${reqNum}</td>
-        </tr>
-        <tr>
-          <td class="label">Description</td>
-          <td class="value">${request.description || request.material_name}</td>
-        </tr>
-        <tr>
-          <td class="label">Material Type</td>
-          <td class="value">${request.material_type}</td>
-        </tr>
-        <tr>
-          <td class="label">Plant / Storage Loc</td>
-          <td class="value">${request.plant} / ${request.storage_location || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">Base UOM</td>
-          <td class="value">${request.uom || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">Current Status</td>
-          <td class="value" style="color: #d97706;">Pending Plant Head Approval</td>
-        </tr>
-      </table>
-    </div>
-  `;
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0f172a;">Request Submitted!</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#475569;">
+      Your Material Master Creation Request has been registered and routed to <strong>Plant Head</strong> for review.
+      You will receive email updates as it moves through each approval stage.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:28px;">
+      <tr><td style="padding:20px 24px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">Request Details</div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;width:40%;">Request Number</td><td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:800;color:#4f46e5;">${request.req_number}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Description</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.description || request.material_name || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Material Type</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.material_type || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Plant / Storage</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.plant || '—'} / ${request.storage_location || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">UOM</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.uom || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Status</td><td style="padding:9px 0;font-size:13px;font-weight:800;color:#d97706;">⏳ Pending Plant Head</td></tr>
+        </table>
+      </td></tr>
+    </table>`;
 
   return sendMailSafe({
-    to: creatorEmail,
-    role: 'USER', // mapped to raulankesh96@gmail.com
+    to: creatorEmail, role: 'USER',
     subject: 'Material Creation Request Submitted',
     trigger: 'REQUEST_CREATED',
     html: buildHtmlTemplate({
-      title: 'Material Creation Request Submitted',
-      badgeText: 'Submitted',
-      badgeColor: '#3b82f6', // Blue
-      contentHtml,
-      actionLink: portalUrl,
-      actionText: 'Track Your Request'
-    })
+      title: 'Material Creation Request Submitted', badgeText: 'Submitted', badgeColor: '#3b82f6',
+      contentHtml, actionLink: portalUrl, actionText: 'Track Your Request →',
+    }),
   });
 };
 
-/**
- * 3. Action Required Workflow Email (To NEXT Approver)
- * Triggered when a request enters an approver's queue.
- */
-exports.sendWorkflowStageNotificationEmail = async (approverEmail, approverRole, request) => {
-  const reqId = request.id;
-  const reqNum = request.req_number;
-  const portalUrl = `${FRONTEND_URL}/approvals?id=${reqId}`;
+// 3. Notify next approver that request is in their queue
+exports.sendWorkflowStageEmail = async (approverEmail, approverRole, request) => {
+  const portalUrl = `${FRONTEND_URL}/approvals?highlight=${request.id}`;
 
   const contentHtml = `
-    <h1>Review Required</h1>
-    <p>A Material Master Creation Request has been routed to your queue and is awaiting your explicit action.</p>
-    <p>Please review the details below. You can log into the portal directly via the buttons to Approve, Reject, or Send Back with comments.</p>
-    
-    <div class="table-container">
-      <div class="table-title">Material Specifications</div>
-      <table class="data-table">
-        <tr>
-          <td class="label">Request ID</td>
-          <td class="value" style="font-family: monospace;">${reqNum}</td>
-        </tr>
-        <tr>
-          <td class="label">Stage / Role</td>
-          <td class="value">${approverRole}</td>
-        </tr>
-        <tr>
-          <td class="label">Description</td>
-          <td class="value">${request.description || request.material_name}</td>
-        </tr>
-        <tr>
-          <td class="label">Material Type</td>
-          <td class="value">${request.material_type}</td>
-        </tr>
-        <tr>
-          <td class="label">Plant / S-Loc</td>
-          <td class="value">${request.plant} / ${request.storage_location || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">UOM / Purch Group</td>
-          <td class="value">${request.uom || '—'} / ${request.purchase_group || '—'}</td>
-        </tr>
-      </table>
-    </div>
-    
-    <p style="text-align: center; margin: 15px 0;">
-      <a href="${portalUrl}" class="btn-secondary-cta" style="color: #059669 !important; background-color: #ecfdf5; border-color: #a7f3d0;">✓ Open to Approve</a>
-      <a href="${portalUrl}" class="btn-secondary-cta" style="color: #dc2626 !important; background-color: #fef2f2; border-color: #fecaca;">✕ Open to Reject</a>
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0f172a;">Action Required</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#475569;">
+      A Material Master Creation Request is pending your review as <strong>${approverRole}</strong>.
+      Please login and Approve, Reject, or Send Back with comments.
     </p>
-  `;
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:24px;">
+      <tr><td style="padding:20px 24px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">Request Details</div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;width:40%;">Request Number</td><td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:800;color:#4f46e5;">${request.req_number}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Your Role / Stage</td><td style="padding:9px 0;font-size:13px;font-weight:700;color:#0f172a;">${approverRole}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Description</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.description || request.material_name || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Material Type</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.material_type || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Plant / S-Loc</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.plant || '—'} / ${request.storage_location || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">UOM</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.uom || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Purchase Group</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${request.purchase_group || '—'}</td></tr>
+        </table>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr>
+        <td align="center" style="padding:0 5px;"><a href="${portalUrl}" target="_blank" style="display:inline-block;padding:11px 20px;background:#ecfdf5;border:1px solid #a7f3d0;color:#059669;font-size:13px;font-weight:700;text-decoration:none;border-radius:8px;">✓ Open to Approve</a></td>
+        <td align="center" style="padding:0 5px;"><a href="${portalUrl}" target="_blank" style="display:inline-block;padding:11px 20px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:13px;font-weight:700;text-decoration:none;border-radius:8px;">✕ Open to Reject</a></td>
+        <td align="center" style="padding:0 5px;"><a href="${portalUrl}" target="_blank" style="display:inline-block;padding:11px 20px;background:#fffbeb;border:1px solid #fde68a;color:#d97706;font-size:13px;font-weight:700;text-decoration:none;border-radius:8px;">↩ Send Back</a></td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">All actions must be performed inside the portal after login.</p>`;
 
   return sendMailSafe({
-    to: approverEmail,
-    role: approverRole, // dynamically maps to the target test email
-    subject: `Action Required: Material Creation Request ${reqNum}`,
-    trigger: 'APPROVER_NOTIFICATION',
+    to: approverEmail, role: approverRole,
+    subject: `Action Required: Material Request ${request.req_number} — Pending Your Review`,
+    trigger: 'WORKFLOW_STAGE_NOTIFY',
     html: buildHtmlTemplate({
-      title: 'Action Required',
-      badgeText: `Pending ${approverRole}`,
-      badgeColor: '#f59e0b', // Amber
-      contentHtml,
-      actionLink: portalUrl,
-      actionText: 'Review in Portal'
-    })
+      title: 'Action Required', badgeText: `Pending ${approverRole}`, badgeColor: '#f59e0b',
+      contentHtml, actionLink: portalUrl, actionText: 'Review in Portal →',
+    }),
   });
 };
 
-/**
- * 4. Workflow Action Taken Email (To Creator / USER)
- * Triggered when an approver takes action: APPROVE, REJECT, or SEND_BACK.
- */
-exports.sendWorkflowActionNotificationEmail = async (creatorEmail, request, action, actorRole, comments) => {
-  const reqId = request.id;
-  const reqNum = request.req_number;
-  
-  // Custom badges and links depending on the action
-  let statusLabel = '';
-  let badgeColor = '';
-  let portalUrl = `${FRONTEND_URL}/requests/my?id=${reqId}`;
-  let actionTitle = '';
+// 4. Notify requester when approver takes action (APPROVE / REJECT / SEND_BACK)
+exports.sendWorkflowActionEmail = async (creatorEmail, request, action, actorRole, actorName, comments, newStatus) => {
+  const portalUrl = `${FRONTEND_URL}/requests/my?highlight=${request.id}`;
+
+  let badgeText = '', badgeColor = '#64748b', heading = '', statusNote = '', alertBox = '';
 
   if (action === 'APPROVE') {
-    statusLabel = 'Approved (Moved Forward)';
-    badgeColor = '#10b981'; // Green
-    actionTitle = `Approved by ${actorRole}`;
+    badgeText = 'Approved — Moving Forward'; badgeColor = '#10b981';
+    heading = `Approved by ${actorRole}`;
+    statusNote = `<span style="color:#10b981;font-weight:800;">${newStatus || 'Moved to next stage'}</span>`;
   } else if (action === 'SEND_BACK') {
-    statusLabel = 'Sent Back for Changes';
-    badgeColor = '#f59e0b'; // Amber
-    actionTitle = `Sent Back by ${actorRole}`;
+    badgeText = 'Sent Back for Corrections'; badgeColor = '#f59e0b';
+    heading = `Sent Back by ${actorRole}`;
+    statusNote = `<span style="color:#d97706;font-weight:800;">${newStatus || 'Sent Back For Changes'}</span>`;
+    alertBox = `<div style="margin:20px 0 0;padding:15px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;font-size:13.5px;color:#b45309;line-height:1.6;"><strong>Action Required:</strong> Click "Edit &amp; Resubmit" below, update the flagged fields, then resubmit.</div>`;
   } else if (action === 'REJECT') {
-    statusLabel = 'Rejected';
-    badgeColor = '#ef4444'; // Red
-    actionTitle = `Rejected by ${actorRole}`;
+    badgeText = 'Request Rejected'; badgeColor = '#ef4444';
+    heading = `Rejected by ${actorRole}`;
+    statusNote = `<span style="color:#ef4444;font-weight:800;">Rejected</span>`;
+    alertBox = `<div style="margin:20px 0 0;padding:15px 18px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:13.5px;color:#b91c1c;line-height:1.6;"><strong>Request Closed.</strong> This request has been permanently rejected.</div>`;
+  } else if (action === 'RESUBMIT') {
+    badgeText = 'Request Resubmitted'; badgeColor = '#3b82f6';
+    heading = 'Your Request Was Resubmitted';
+    statusNote = `<span style="color:#3b82f6;font-weight:800;">${newStatus || 'Pending Review'}</span>`;
   } else {
-    statusLabel = action;
-    badgeColor = '#64748b'; // Slate
-    actionTitle = `Workflow Update`;
+    badgeText = action; heading = 'Workflow Update';
+    statusNote = `<span style="color:#64748b;">${newStatus || action}</span>`;
   }
 
   const contentHtml = `
-    <h1>Workflow Action: ${actionTitle}</h1>
-    <p>An approver has processed your Material Master Request <strong>${reqNum}</strong>.</p>
-    
-    <div class="table-container">
-      <div class="table-title">Workflow Log</div>
-      <table class="data-table">
-        <tr>
-          <td class="label">Action Role</td>
-          <td class="value">${actorRole}</td>
-        </tr>
-        <tr>
-          <td class="label">Action Status</td>
-          <td class="value" style="color: ${badgeColor};">${statusLabel}</td>
-        </tr>
-        <tr>
-          <td class="label">Timestamp</td>
-          <td class="value">${new Date().toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
-        </tr>
-        <tr>
-          <td class="label">Remarks / Comments</td>
-          <td class="value" style="font-style: italic; color: #475569;">"${comments || 'No remarks provided.'}"</td>
-        </tr>
-      </table>
-    </div>
-    
-    ${action === 'SEND_BACK' ? `
-      <p style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 10px; font-size: 13.5px; color: #b45309; line-height: 1.5;">
-        <strong>Action Required:</strong> Please click the button below to edit your request description, material type, plant, or other fields as indicated in the remarks, and then click **Resubmit** to route it back.
-      </p>
-    ` : ''}
-  `;
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0f172a;">${heading}</h1>
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#475569;">
+      Your Material Master Request <strong>${request.req_number}</strong> has been reviewed.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:20px 24px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:14px;">Workflow Event Log</div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;width:40%;">Request Number</td><td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:800;color:#4f46e5;">${request.req_number}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Actioned By</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#0f172a;">${actorName || actorRole} <span style="color:#94a3b8;">(${actorRole})</span></td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Action</td><td style="padding:9px 0;font-size:13px;font-weight:700;color:#0f172a;">${action}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">New Status</td><td style="padding:9px 0;font-size:13px;">${statusNote}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Timestamp</td><td style="padding:9px 0;font-size:13px;color:#0f172a;">${new Date().toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;vertical-align:top;">Remarks</td><td style="padding:9px 0;font-size:13px;color:#475569;font-style:italic;">"${comments || 'No remarks provided.'}"</td></tr>
+        </table>
+        ${alertBox}
+      </td></tr>
+    </table>`;
 
   return sendMailSafe({
-    to: creatorEmail,
-    role: 'USER', // mapped to raulankesh96@gmail.com
-    subject: `Update: Material Request ${reqNum} - ${actionTitle}`,
-    trigger: 'ACTION_LOGGED',
+    to: creatorEmail, role: 'USER',
+    subject: `Update: Material Request ${request.req_number} — ${heading}`,
+    trigger: 'WORKFLOW_ACTION_NOTIFY',
     html: buildHtmlTemplate({
-      title: actionTitle,
-      badgeText: statusLabel,
-      badgeColor,
-      contentHtml,
-      actionLink: portalUrl,
-      actionText: action === 'SEND_BACK' ? 'Edit & Resubmit' : 'View Request Details'
-    })
+      title: heading, badgeText, badgeColor,
+      contentHtml, actionLink: portalUrl,
+      actionText: action === 'SEND_BACK' ? 'Edit & Resubmit →' : 'View Request Status →',
+    }),
   });
 };
 
-/**
- * 5. Final Approval Confirmation Email (To Creator / USER)
- * Triggered when IT Team approves request (moves to Approved).
- */
+// 5. Final approval — IT Team approves → completion email
 exports.sendFinalApprovalEmail = async (creatorEmail, request) => {
-  const reqId = request.id;
-  const reqNum = request.req_number;
-  const portalUrl = `${FRONTEND_URL}/requests/my?id=${reqId}`;
+  const portalUrl = `${FRONTEND_URL}/requests/my?highlight=${request.id}`;
 
   const contentHtml = `
-    <h1>Request Fully Approved!</h1>
-    <p>Congratulations! Your Material Master Creation Request <strong>${reqNum}</strong> has been **FULLY APPROVED** and processed by the IT Team.</p>
-    <p>The material record has been created successfully in the portal database and is now flagged as completed. It is ready for replication and SAP integration.</p>
-    
-    <div class="table-container">
-      <div class="table-title">Approved Specifications</div>
-      <table class="data-table">
-        <tr>
-          <td class="label">Request Number</td>
-          <td class="value" style="font-family: monospace;">${reqNum}</td>
-        </tr>
-        <tr>
-          <td class="label">Description</td>
-          <td class="value">${request.description || request.material_name}</td>
-        </tr>
-        <tr>
-          <td class="label">Material Type</td>
-          <td class="value">${request.material_type}</td>
-        </tr>
-        <tr>
-          <td class="label">Control Code (HSN)</td>
-          <td class="value" style="font-family: monospace;">${request.control_code || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">Plant / Storage Loc</td>
-          <td class="value">${request.plant} / ${request.storage_location || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">Base UOM</td>
-          <td class="value">${request.uom || '—'}</td>
-        </tr>
-        <tr>
-          <td class="label">Status</td>
-          <td class="value" style="color: #10b981; font-weight: 800;">Completed (Ready for SAP)</td>
-        </tr>
-      </table>
-    </div>
-  `;
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0f172a;">&#127881; Request Fully Approved!</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#475569;">
+      Your Material Master Creation Request <strong>${request.req_number}</strong> has been
+      <span style="color:#10b981;font-weight:800;">FULLY APPROVED</span> by the IT Team and is ready for SAP integration.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;margin-bottom:28px;">
+      <tr><td style="padding:20px 24px;">
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#16a34a;border-bottom:1px solid #bbf7d0;padding-bottom:10px;margin-bottom:14px;">Approved Specifications</div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;width:40%;">Request Number</td><td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:800;color:#14532d;">${request.req_number}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">Description</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#14532d;">${request.description || request.material_name || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">Material Type</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#14532d;">${request.material_type || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">Control Code</td><td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:600;color:#14532d;">${request.control_code || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">Plant / Storage</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#14532d;">${request.plant || '—'} / ${request.storage_location || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">UOM</td><td style="padding:9px 0;font-size:13px;font-weight:600;color:#14532d;">${request.uom || '—'}</td></tr>
+          <tr><td style="padding:9px 0;font-size:13px;font-weight:700;color:#166534;">Status</td><td style="padding:9px 0;font-size:13px;font-weight:800;color:#10b981;">&#10003; Completed — Ready for SAP</td></tr>
+        </table>
+      </td></tr>
+    </table>`;
 
   return sendMailSafe({
-    to: creatorEmail,
-    role: 'USER', // mapped to raulankesh96@gmail.com
-    subject: `Approved: Material Request ${reqNum} Completed Successfully`,
+    to: creatorEmail, role: 'USER',
+    subject: `Approved: Material Request ${request.req_number} — Completed Successfully`,
     trigger: 'FINAL_APPROVAL',
     html: buildHtmlTemplate({
-      title: 'Request Approved & Completed',
-      badgeText: 'Completed',
-      badgeColor: '#10b981', // Emerald
-      contentHtml,
-      actionLink: portalUrl,
-      actionText: 'View Approved Material'
-    })
+      title: 'Request Approved & Completed', badgeText: 'Fully Approved', badgeColor: '#10b981',
+      contentHtml, actionLink: portalUrl, actionText: 'View Approved Material →',
+    }),
   });
 };
