@@ -3,14 +3,12 @@ import api from '../services/api';
 import { UserPlus, Edit3, Key, CheckCircle2, XCircle, X, Search, ToggleLeft, ToggleRight, Users, Shield } from 'lucide-react';
 
 const ROLES = ['User','Plant Head','Mechanical Team','Electrical Team','Purchase Team','GST Team','Store Head'];
-
 const ROLE_BADGE = {
   'IT Team':'badge badge-purple','Plant Head':'badge badge-info','Purchase Team':'badge badge-info',
   'GST Team':'badge badge-pending','Store Head':'badge badge-approved',
   'Mechanical Team':'badge badge-sentback','Electrical Team':'badge badge-sentback',
   'User':'badge badge-default','Disabled':'badge badge-rejected',
 };
-
 const Skel = ({ w='w-full', h='h-3.5' }) => <div className={`skeleton ${w} ${h} rounded`} />;
 
 const UserManagement = () => {
@@ -19,11 +17,11 @@ const UserManagement = () => {
   const [search, setSearch]       = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser]   = useState(null);
-  const [formData, setFormData]   = useState({ full_name:'', username:'', email:'', password:'', role:'User', department:'' });
+  const [formData, setFormData]   = useState({ full_name:'', username:'', email:'', personal_email:'', password:'', role:'User', department:'' });
 
   const fetchUsers = async () => {
     try { const r = await api.get('/auth/users'); setUsers(Array.isArray(r.data)?r.data:[]); }
-    catch { /* silent */ } finally { setLoading(false); }
+    catch { } finally { setLoading(false); }
   };
   useEffect(() => { fetchUsers(); }, []);
 
@@ -50,7 +48,7 @@ const UserManagement = () => {
   };
 
   const resetForm = () => {
-    setFormData({ full_name:'', username:'', email:'', password:'', role:'User', department:'' });
+    setFormData({ full_name:'', username:'', email:'', personal_email:'', password:'', role:'User', department:'' });
     setEditUser(null);
   };
 
@@ -71,12 +69,11 @@ const UserManagement = () => {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label:'Total Users',  value:users.length,                           icon:Users,       cls:'text-blue-600 bg-blue-50' },
-          { label:'Active',       value:users.filter(u=>u.is_active).length,    icon:CheckCircle2,cls:'text-emerald-600 bg-emerald-50' },
-          { label:'Inactive',     value:users.filter(u=>!u.is_active).length,   icon:XCircle,     cls:'text-red-500 bg-red-50' },
+          { label:'Total Users', value:users.length, icon:Users, cls:'text-blue-600 bg-blue-50' },
+          { label:'Active', value:users.filter(u=>u.is_active).length, icon:CheckCircle2, cls:'text-emerald-600 bg-emerald-50' },
+          { label:'Inactive', value:users.filter(u=>!u.is_active).length, icon:XCircle, cls:'text-red-500 bg-red-50' },
         ].map(({ label, value, icon:Icon, cls }) => (
           <div key={label} className="card flex items-center gap-3 py-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${cls}`}><Icon size={16} /></div>
@@ -88,7 +85,6 @@ const UserManagement = () => {
         ))}
       </div>
 
-      {/* Table */}
       <div className="card-flat overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">
@@ -100,9 +96,7 @@ const UserManagement = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr>
-              <th>User</th><th>Role</th><th>Department</th><th>Status</th><th>Last Login</th><th className="text-right">Actions</th>
-            </tr></thead>
+            <thead><tr><th>User</th><th>Role</th><th>Department</th><th>Status</th><th>Last Login</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
               {loading ? [1,2,3,4].map(i => (
                 <tr key={i}>{[1,2,3,4,5,6].map(j => <td key={j}><Skel w="w-full max-w-[120px]" /></td>)}</tr>
@@ -116,6 +110,7 @@ const UserManagement = () => {
                       <div>
                         <p className="font-semibold text-slate-800 text-[13px]">{u.full_name}</p>
                         <p className="text-[11px] text-slate-400">{u.email}</p>
+                        {u.personal_email && <p className="text-[10px] text-blue-400">📧 {u.personal_email}</p>}
                       </div>
                     </div>
                   </td>
@@ -132,17 +127,12 @@ const UserManagement = () => {
                   <td>
                     <div className="flex justify-end items-center gap-1">
                       <button onClick={() => { setEditUser(u); setFormData({...u,password:''}); setShowModal(true); }}
-                        className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors" title="Edit">
-                        <Edit3 size={14} />
-                      </button>
+                        className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"><Edit3 size={14} /></button>
                       <button onClick={() => resetPassword(u.id)}
-                        className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors" title="Reset Password">
-                        <Key size={14} />
-                      </button>
+                        className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors"><Key size={14} /></button>
                       {u.role !== 'IT Team' && (
                         <button onClick={() => toggleActive(u)}
-                          className={`p-1.5 rounded-lg transition-colors ${u.is_active?'hover:bg-red-50 text-red-500':'hover:bg-emerald-50 text-emerald-600'}`}
-                          title={u.is_active?'Disable':'Enable'}>
+                          className={`p-1.5 rounded-lg transition-colors ${u.is_active?'hover:bg-red-50 text-red-500':'hover:bg-emerald-50 text-emerald-600'}`}>
                           {u.is_active ? <ToggleRight size={14}/> : <ToggleLeft size={14}/>}
                         </button>
                       )}
@@ -151,35 +141,25 @@ const UserManagement = () => {
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan="6">
-                  <div className="empty-state">
-                    <div className="empty-icon"><Users size={18} className="text-slate-400" /></div>
-                    <p className="text-[13px] text-slate-400">No users found</p>
-                  </div>
-                </td></tr>
+                <tr><td colSpan="6"><div className="empty-state"><div className="empty-icon"><Users size={18} className="text-slate-400" /></div><p className="text-[13px] text-slate-400">No users found</p></div></td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setShowModal(false)}>
           <div className="modal-panel max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <Shield size={14} className="text-blue-600" />
-                </div>
+                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center"><Shield size={14} className="text-blue-600" /></div>
                 <div>
                   <h2 className="font-bold text-slate-800 text-[14px]">{editUser?'Edit User':'Create New User'}</h2>
                   <p className="text-slate-400 text-[11px]">{editUser?'Update user details and permissions':'Add a new enterprise user account'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={15} className="text-slate-500" />
-              </button>
+              <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><X size={15} className="text-slate-500" /></button>
             </div>
             <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -192,10 +172,29 @@ const UserManagement = () => {
                   <input className="input" required value={formData.username} onChange={e => setFormData({...formData,username:e.target.value})} placeholder="john.smith" />
                 </div>
               </div>
+
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Work Email *</label>
-                <input type="email" className="input" required value={formData.email} onChange={e => setFormData({...formData,email:e.target.value})} placeholder="john@enterprise.com" />
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                  User Email *
+                  <span className="ml-1 text-blue-500 normal-case font-normal text-[10px]">← Welcome email sent here</span>
+                </label>
+                <input type="email" className="input border-blue-300" required
+                  value={formData.personal_email}
+                  onChange={e => setFormData({...formData, personal_email:e.target.value})}
+                  placeholder="tanviraul196@gmail.com (real personal email)" />
               </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Work Email *
+                  <span className="ml-1 text-slate-400 normal-case font-normal text-[10px]">← used to login to portal</span>
+                </label>
+                <input type="email" className="input" required
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email:e.target.value})}
+                  placeholder="john@enterprise.com" />
+              </div>
+
               {!editUser && (
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Initial Password *</label>
@@ -225,5 +224,4 @@ const UserManagement = () => {
     </div>
   );
 };
-
 export default UserManagement;

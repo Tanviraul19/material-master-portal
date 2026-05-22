@@ -48,6 +48,8 @@ try {
 // ── Test Email Role Mapping ───────────────────────────────────────────────────
 // Maps workflow roles → test inboxes (configurable via .env)
 function getRecipientEmail(role, dbEmail) {
+  // __DIRECT__ = bypass all test routing, send to exact email
+  if (role === '__DIRECT__') return dbEmail;
   const testUser      = process.env.TEST_USER_EMAIL       || 'raulankesh96@gmail.com';
   const testAdmin     = process.env.TEST_ADMIN_EMAIL      || 'tanviraul196@gmail.com';
   const testApprover  = process.env.TEST_APPROVER_EMAIL   || 'tanviraul09@gmail.com';
@@ -148,7 +150,7 @@ async function sendMailSafe(options) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // 1. Admin creates new user → welcome email with credentials
-exports.sendUserCreatedEmail = async (userEmail, fullName, tempPassword) => {
+exports.sendUserCreatedEmail = async (personalEmail, fullName, tempPassword, workEmail) => {
   const loginUrl = `${FRONTEND_URL}/login`;
 
   const contentHtml = `
@@ -170,7 +172,7 @@ exports.sendUserCreatedEmail = async (userEmail, fullName, tempPassword) => {
           </tr>
           <tr>
             <td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Username / Email</td>
-            <td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:700;color:#0f172a;">${userEmail}</td>
+            <td style="padding:9px 0;font-size:13px;font-family:monospace;font-weight:700;color:#0f172a;">${workEmail || personalEmail}</td>
           </tr>
           <tr>
             <td style="padding:9px 0;font-size:13px;font-weight:700;color:#64748b;">Temporary Password</td>
@@ -181,8 +183,9 @@ exports.sendUserCreatedEmail = async (userEmail, fullName, tempPassword) => {
       </td></tr>
     </table>`;
 
+  // Send directly to personal email — bypass test routing for user creation
   return sendMailSafe({
-    to: userEmail, role: 'USER',
+    to: personalEmail, role: '__DIRECT__',
     subject: 'Material Master Portal — Your Account Has Been Created',
     trigger: 'USER_CREATED',
     html: buildHtmlTemplate({
