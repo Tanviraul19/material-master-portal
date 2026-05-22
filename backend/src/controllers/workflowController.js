@@ -37,7 +37,7 @@ async function createNotification(t, { user_id, request_id, type, message }) {
 
 async function notifyRoleUsers(t, role, request_id, type, message) {
   const users = await sequelize.query(
-    `SELECT id FROM users WHERE role = ? AND is_active = 1`,
+    `SELECT id FROM users WHERE role = ? AND is_active = TRUE`,
     { replacements: [role], type: sequelize.constructor.QueryTypes.SELECT }
   );
   for (const u of users) await createNotification(t, { user_id: u.id, request_id, type, message });
@@ -48,7 +48,7 @@ function needsDeptApproval(department) { return HAS_DEPT_APPROVER.includes(depar
 
 async function getApproverForRole(role) {
   const [u] = await sequelize.query(
-    `SELECT full_name, email, role FROM users WHERE role = ? AND is_active = 1 LIMIT 1`,
+    `SELECT full_name, email, role FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`,
     { replacements: [role], type: sequelize.constructor.QueryTypes.SELECT }
   );
   return u || { full_name: role, email: '', role };

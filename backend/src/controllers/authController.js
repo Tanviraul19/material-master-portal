@@ -8,7 +8,7 @@ const emailService = require('../utils/emailService');
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const users = await db.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [email]);
+    const users = await db.query('SELECT * FROM users WHERE email = ? AND is_active = TRUE', [email]);
     if (users.length === 0) {
       return res.status(404).json({ message: 'User not found or account disabled' });
     }
@@ -84,7 +84,7 @@ exports.updateUser = async (req, res) => {
   try {
     await db.execute(
       'UPDATE users SET full_name = ?, role = ?, department = ?, is_active = ? WHERE id = ?',
-      [full_name, role, department, is_active ? 1 : 0, id]
+      [full_name, role, department, is_active ? true : false, id]
     );
     const [updated] = await db.query('SELECT id, full_name, role FROM users WHERE id = ?', [id]);
     res.status(200).json(updated);
@@ -100,7 +100,7 @@ exports.toggleUserActive = async (req, res) => {
     const [user] = await db.query('SELECT id, is_active, role FROM users WHERE id = ?', [id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.role === 'IT Team') return res.status(403).json({ error: 'Cannot disable IT Team admin account' });
-    const newActive = user.is_active ? 0 : 1;
+    const newActive = !user.is_active;
     await db.execute('UPDATE users SET is_active = ? WHERE id = ?', [newActive, id]);
     res.status(200).json({ message: newActive ? 'User enabled' : 'User disabled', is_active: newActive });
   } catch (err) {

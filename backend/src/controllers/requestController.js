@@ -38,7 +38,7 @@ exports.createRequest = async (req, res) => {
 
     // ── Get Plant Head ────────────────────────────────────────────────────
     const [plantHeadUser] = await db.query(
-      `SELECT id, full_name, email FROM users WHERE role = 'Plant Head' AND is_active = 1 LIMIT 1`
+      `SELECT id, full_name, email FROM users WHERE role = 'Plant Head' AND is_active = TRUE LIMIT 1`
     );
     const assignedApprover = plantHeadUser ? plantHeadUser.full_name : 'Plant Head';
 
@@ -176,7 +176,7 @@ exports.resubmitRequest = async (req, res) => {
     const nextApproverRole = mapping.role;
 
     const [approverUser] = await db.query(
-      `SELECT full_name, email FROM users WHERE role = ? AND is_active = 1 LIMIT 1`, [nextApproverRole]
+      `SELECT full_name, email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`, [nextApproverRole]
     );
     const assignedApprover = approverUser ? approverUser.full_name : nextApproverRole;
 
@@ -199,7 +199,7 @@ exports.resubmitRequest = async (req, res) => {
     );
 
     const notifyUsers = await sequelize.query(
-      `SELECT id FROM users WHERE role = ? AND is_active = 1`,
+      `SELECT id FROM users WHERE role = ? AND is_active = TRUE`,
       { replacements: [nextApproverRole], type: sequelize.constructor.QueryTypes.SELECT }
     );
     for (const u of notifyUsers) {
