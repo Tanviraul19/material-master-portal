@@ -199,4 +199,3 @@ const autoSeedMasterData = async () => {
     }
 };
 
-const isPostgres = !!process.env.DATABASE_URL;
