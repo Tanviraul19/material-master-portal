@@ -83,6 +83,10 @@ const initDB = async () => {
         }
 
         console.log(`✅ Database initialized (${isPostgres ? 'PostgreSQL' : 'SQLite'})`);
+
+        // Auto-seed master data if tables are empty
+        await autoSeedMasterData();
+
     } catch (err) {
         console.error('❌ DB Init failed:', err.message);
         throw err;
@@ -90,3 +94,109 @@ const initDB = async () => {
 };
 
 module.exports = initDB;
+
+// ── Auto-seed master data from Excel on startup (only if tables are empty) ──
+const autoSeedMasterData = async () => {
+    try {
+        const XLSX = require('xlsx');
+        const path = require('path');
+        const DATA_DIR = path.join(__dirname, '../../../data');
+
+        // Check if already seeded
+        const [mgCheck] = await sequelize.query(
+            `SELECT COUNT(*) as cnt FROM master_material_groups`,
+            { type: sequelize.constructor.QueryTypes.SELECT }
+        );
+        const mgCount = parseInt(mgCheck?.cnt || mgCheck?.count || 0);
+        if (mgCount > 0) {
+            console.log(`✅ Master data already seeded (${mgCount} material groups)`);
+            return;
+        }
+
+        console.log('🌱 Seeding master data from Excel files...');
+        let mgIns = 0, uomIns = 0, plantIns = 0;
+
+        // Material Groups
+        try {
+            const wb = XLSX.readFile(path.join(DATA_DIR, 'Plant Details.xlsx'));
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets['Sheet1'], { defval: '' });
+            for (const r of rows) {
+                const code = String(r['Material Group'] || '').trim();
+                const short = String(r['Short Description'] || '').trim();
+                const long = String(r['Long Description'] || '').trim();
+                if (!code) continue;
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO master_material_groups (mg_code, short_description, long_description) VALUES ($1, $2, $3) ON CONFLICT (mg_code) DO NOTHING`,
+                            { bind: [code, short, long] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO master_material_groups (mg_code, short_description, long_description) VALUES (?, ?, ?)`,
+                            { replacements: [code, short, long] }
+                        );
+                    }
+                    mgIns++;
+                } catch (_) {}
+            }
+        } catch (e) { console.warn('MG seed skip:', e.message); }
+
+        // UOM
+        try {
+            const wb = XLSX.readFile(path.join(DATA_DIR, 'Plant Details.xlsx'));
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets['Sheet2'], { defval: '' });
+            for (const r of rows) {
+                const code = String(r['Bace UOM'] || '').trim();
+                const desc = String(r['UOM Description'] || '').trim();
+                if (!code || code.includes('\t') || code.length > 10) continue;
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO master_uom (uom_code, uom_description) VALUES ($1, $2) ON CONFLICT (uom_code) DO NOTHING`,
+                            { bind: [code, desc] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO master_uom (uom_code, uom_description) VALUES (?, ?)`,
+                            { replacements: [code, desc] }
+                        );
+                    }
+                    uomIns++;
+                } catch (_) {}
+            }
+        } catch (e) { console.warn('UOM seed skip:', e.message); }
+
+        // Plants
+        try {
+            const wb = XLSX.readFile(path.join(DATA_DIR, 'All Plants.xlsx'));
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+            for (const r of rows) {
+                const plant = String(r['Plant '] || r['Plant'] || '').trim();
+                const sloc  = String(r['Storage Location'] || '').trim();
+                const desc  = String(r['Storage Location description'] || '').trim();
+                if (!plant || !sloc) continue;
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO master_plants (plant, storage_location, storage_location_desc) VALUES ($1, $2, $3) ON CONFLICT (plant, storage_location) DO NOTHING`,
+                            { bind: [plant, sloc, desc] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO master_plants (plant, storage_location, storage_location_desc) VALUES (?, ?, ?)`,
+                            { replacements: [plant, sloc, desc] }
+                        );
+                    }
+                    plantIns++;
+                } catch (_) {}
+            }
+        } catch (e) { console.warn('Plants seed skip:', e.message); }
+
+        console.log(`✅ Master data seeded — MG:${mgIns} UOM:${uomIns} Plants:${plantIns}`);
+    } catch (err) {
+        console.warn('⚠️ Master data auto-seed failed (non-critical):', err.message);
+    }
+};
+
+const isPostgres = !!process.env.DATABASE_URL;
