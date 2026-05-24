@@ -3,6 +3,8 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 const csv = require('csv-parser');
 const db = require('../config/db');
+const { sequelize } = require('../config/db');
+const isPostgres = !!process.env.DATABASE_URL;
 const { normalizeDescription, similarityScore, DUPLICATE_THRESHOLD } = require('../utils/searchHelper');
 
 // ─────────────────────────────────────────────
@@ -19,37 +21,39 @@ exports.suggestDescriptions = async (req, res) => {
 
 
     // Search material_descriptions (Excel master)
-    const fromMaster = await db.query(
-      `SELECT original_description, source, material_type, material_code
-       FROM material_descriptions
-       WHERE LOWER(original_description) LIKE LOWER(?)
-       ORDER BY length(original_description) ASC
-       LIMIT 20`,
-
-      [term]
-    );
+    const masterQuery = isPostgres
+      ? `SELECT original_description, source, material_type, material_code
+         FROM material_descriptions WHERE original_description ILIKE $1
+         ORDER BY char_length(original_description) ASC LIMIT 20`
+      : `SELECT original_description, source, material_type, material_code
+         FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)
+         ORDER BY length(original_description) ASC LIMIT 20`;
+    const fromMaster = isPostgres
+      ? await (async () => { const [r] = await sequelize.query(masterQuery, { bind: [term] }); return r; })()
+      : await db.query(masterQuery, [term]);
 
     // Search material_requests (submitted requests)
-    const fromRequests = await db.query(
-      `SELECT description as original_description, 'request' as source, material_type, req_number as material_code
-       FROM material_requests
-       WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL
-       ORDER BY created_at DESC
-       LIMIT 10`,
-
-      [term]
-    );
+    const reqQuery = isPostgres
+      ? `SELECT description as original_description, 'request' as source, material_type, req_number as material_code
+         FROM material_requests WHERE description ILIKE $1 AND description IS NOT NULL
+         ORDER BY created_at DESC LIMIT 10`
+      : `SELECT description as original_description, 'request' as source, material_type, req_number as material_code
+         FROM material_requests WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL
+         ORDER BY created_at DESC LIMIT 10`;
+    const fromRequests = isPostgres
+      ? await (async () => { const [r] = await sequelize.query(reqQuery, { bind: [term] }); return r; })()
+      : await db.query(reqQuery, [term]);
 
     // Count total matches
-    const [masterCount] = await db.query(
-      `SELECT COUNT(*) as cnt FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)`,
-      [term]
-    );
+    const masterCountRows = isPostgres
+      ? await (async () => { const [r] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE original_description ILIKE $1`, { bind: [term] }); return r; })()
+      : await db.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)`, [term]);
+    const [masterCount] = masterCountRows;
 
-    const [reqCount] = await db.query(
-      `SELECT COUNT(*) as cnt FROM material_requests WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL`,
-      [term]
-    );
+    const reqCountRows = isPostgres
+      ? await (async () => { const [r] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE description ILIKE $1 AND description IS NOT NULL`, { bind: [term] }); return r; })()
+      : await db.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL`, [term]);
+    const [reqCount] = reqCountRows;
 
 
     const suggestions = [
