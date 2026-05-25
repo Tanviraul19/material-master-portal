@@ -432,7 +432,29 @@ const MaterialRequestForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isDuplicateBlocked || !validate()) return;
+    if (!validate()) return;
+
+    // Final sync duplicate check — catches timing issues when user submits quickly
+    if (formData.description && formData.description.length >= 3) {
+      setIsSubmitting(true);
+      try {
+        const dupRes = await api.get(`/duplicate/check?description=${encodeURIComponent(formData.description)}`);
+        const dupList = dupRes.data?.duplicates || [];
+        if (dupList.length > 0) {
+          setDuplicates(dupList);
+          setIsSubmitting(false);
+          alert('⚠️ Duplicate description detected!\nThis description already exists. Please enter a unique description.');
+          return;
+        }
+      } catch { /* allow submit if check API fails */ }
+      setIsSubmitting(false);
+    }
+
+    if (isDuplicateBlocked) {
+      alert('⚠️ Duplicate description detected! Please enter a unique description.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await api.post('/requests', formData);
@@ -670,6 +692,11 @@ const MaterialRequestForm = () => {
         <div className="px-8 py-5 border-t border-slate-200 bg-white/80 flex items-center justify-between">
           <img src={virajLogo} alt="" className="h-6 opacity-40 grayscale" />
           <div className="flex items-center gap-3">
+            {isDuplicateBlocked && (
+              <span className="text-red-500 text-[11px] font-bold flex items-center gap-1">
+                <Ban size={12} /> Duplicate Detected
+              </span>
+            )}
             <button 
               type="button" 
               onClick={handleSaveDraft} 
@@ -679,11 +706,16 @@ const MaterialRequestForm = () => {
             </button>
             <button 
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-10 py-2.5 bg-blue-600 text-white font-black text-[11px] rounded-lg uppercase tracking-[0.1em] shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2"
+              disabled={isSubmitting || isDuplicateBlocked || isCheckingDuplicate}
+              title={isDuplicateBlocked ? 'Duplicate description — enter a unique description' : ''}
+              className={`px-10 py-2.5 font-black text-[11px] rounded-lg uppercase tracking-[0.1em] shadow-lg active:scale-95 transition-all flex items-center gap-2 ${
+                isDuplicateBlocked ? 'bg-red-500 text-white cursor-not-allowed shadow-red-500/20' :
+                isCheckingDuplicate ? 'bg-blue-400 text-white cursor-wait shadow-blue-400/20' :
+                'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
+              }`}
             >
-              {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Submit Request
+              {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : isDuplicateBlocked ? <Ban size={14} /> : <Send size={14} />}
+              {isDuplicateBlocked ? 'Duplicate Blocked' : isCheckingDuplicate ? 'Checking...' : 'Submit Request'}
             </button>
           </div>
         </div>
