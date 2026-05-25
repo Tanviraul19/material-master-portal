@@ -33,18 +33,16 @@ exports.createUser = async (req, res) => {
     const [newUser] = await db.query('SELECT id, username, role, email FROM users WHERE email = ?', [email]);
     console.log(`[CreateUser] ✅ User created id=${newUser?.id}`);
 
-    // Send welcome email to personal/real email
+    // Send welcome email BEFORE responding — prevents server restart cutting email short
     const emailTarget = personal_email || email;
     console.log(`[CreateUser] Sending welcome email to: ${emailTarget} (work email: ${email})`);
 
-    setImmediate(async () => {
-      try {
-        await emailService.sendUserCreatedEmail(emailTarget, full_name, password, email);
-        console.log(`[CreateUser] ✅ Email sent to ${emailTarget}`);
-      } catch (emailErr) {
-        console.error(`[CreateUser] ❌ Email failed:`, emailErr.message);
-      }
-    });
+    try {
+      await emailService.sendUserCreatedEmail(emailTarget, full_name, password, email);
+      console.log(`[CreateUser] ✅ Email sent to ${emailTarget}`);
+    } catch (emailErr) {
+      console.error(`[CreateUser] ❌ Email failed:`, emailErr.message);
+    }
 
     res.status(201).json(newUser);
   } catch (err) {
