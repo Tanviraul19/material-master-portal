@@ -92,3 +92,17 @@ exports.resetPassword = async (req, res) => {
     res.status(200).json({ message: 'Password reset successful' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+// ── Delete User (permanent) ───────────────────────────────────────────────────
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [user] = await db.query('SELECT id, role FROM users WHERE id = ?', [id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'IT Team') return res.status(403).json({ error: 'Cannot delete IT Team admin account' });
+    await db.execute('DELETE FROM users WHERE id = ?', [id]);
+    res.status(200).json({ message: 'User permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

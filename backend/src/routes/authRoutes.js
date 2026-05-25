@@ -12,4 +12,6 @@ router.put('/users/:id', verifyToken, isITAdmin, authController.updateUser);
 router.patch('/users/:id/reset-password', verifyToken, isITAdmin, authController.resetPassword);
 router.patch('/users/:id/toggle-active', verifyToken, isITAdmin, authController.toggleUserActive);
 
+router.delete('/users/:id', verifyToken, isITAdmin, authController.deleteUser);
+
 module.exports = router;

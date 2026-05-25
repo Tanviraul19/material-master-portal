@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../services/api';
-import { UserPlus, Edit3, Key, CheckCircle2, XCircle, X, Search, ToggleLeft, ToggleRight, Users, Shield } from 'lucide-react';
+import { UserPlus, Edit3, Key, CheckCircle2, XCircle, X, Search, ToggleLeft, ToggleRight, Users, Shield, Trash2 } from 'lucide-react';
 
 const ROLES = ['User','Plant Head','Mechanical Team','Electrical Team','Purchase Team','GST Team','Store Head'];
 
@@ -62,6 +62,18 @@ const UserManagement = () => {
     if (!p) return;
     try { await api.patch(`/auth/users/${id}/reset-password`, { newPassword: p }); alert('Password updated'); }
     catch { alert('Failed to reset password'); }
+  };
+
+  const deleteUser = async (u) => {
+    if (u.role === 'IT Team') return;
+    const confirmed = window.confirm(
+      `⚠️ Permanently Delete User?\n\nName: ${u.full_name}\nEmail: ${u.email}\n\nThis action CANNOT be undone. The user will be permanently removed and will not be able to login.`
+    );
+    if (!confirmed) return;
+    try {
+      await api.delete(`/auth/users/${u.id}`);
+      fetchUsers();
+    } catch { alert('Failed to delete user'); }
   };
 
   const resetForm = () => {
@@ -162,6 +174,13 @@ const UserManagement = () => {
                           className={`p-1.5 rounded-lg transition-colors ${u.is_active ? 'hover:bg-red-50 text-red-500' : 'hover:bg-emerald-50 text-emerald-600'}`}
                           title={u.is_active ? 'Disable' : 'Enable'}>
                           {u.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                        </button>
+                      )}
+                      {u.role !== 'IT Team' && (
+                        <button onClick={() => deleteUser(u)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
+                          title="Delete Permanently">
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
