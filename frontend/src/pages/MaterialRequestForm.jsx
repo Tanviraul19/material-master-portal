@@ -292,13 +292,13 @@ const MaterialRequestForm = () => {
 
   // Suggestion list (debounced 300ms) — substring search, view-only
   useEffect(() => {
-    if (!formData.description || formData.description.length < 2) {
+    if (!formData.description || formData.description.length < 4) {
       setSuggestions({ list: [], total: 0 }); return;
     }
     const t = setTimeout(async () => {
       setIsLoadingSuggestions(true);
       try {
-      const res = await api.get(`/duplicate/suggest?q=${encodeURIComponent(formData.description)}`);
+        const res = await api.get(`/duplicate/suggest?q=${encodeURIComponent(formData.description)}`);
         const list = res.data?.suggestions || [];
         setSuggestions({
           list: list.map(x => ({
@@ -311,7 +311,7 @@ const MaterialRequestForm = () => {
         });
       } catch { setSuggestions({ list: [], total: 0 }); }
       finally { setIsLoadingSuggestions(false); }
-    }, 300);
+    }, 700);
 
     return () => clearTimeout(t);
   }, [formData.description]);

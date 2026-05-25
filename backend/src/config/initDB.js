@@ -50,6 +50,13 @@ const initDB = async () => {
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_logs(request_id)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_orig ON material_descriptions(original_description)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_norm ON material_descriptions(normalized_key)`).catch(() => {});
+        // Enable trigram extension for fast ILIKE search on PostgreSQL
+        if (isPostgres) {
+            await sequelize.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`).catch(() => {});
+            await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_orig_trgm ON material_descriptions USING gin(original_description gin_trgm_ops)`).catch(() => {});
+            await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_norm_trgm ON material_descriptions USING gin(normalized_key gin_trgm_ops)`).catch(() => {});
+            console.log('✅ Trigram indexes ready for fast search');
+        }
 
         // Seed users if empty
         const existing = await sequelize.query(`SELECT COUNT(*) as cnt FROM users`, { type: sequelize.constructor.QueryTypes.SELECT });
