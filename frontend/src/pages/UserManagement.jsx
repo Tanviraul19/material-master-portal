@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../services/api';
 import { UserPlus, Edit3, Key, CheckCircle2, XCircle, X, Search, ToggleLeft, ToggleRight, Users, Shield } from 'lucide-react';
 
@@ -173,13 +174,13 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* ── Modal ── */}
-      {showModal && (
+      {/* ── Modal — rendered at body level via portal to avoid layout stacking issues ── */}
+      {showModal && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" style={{position:"fixed",top:0,left:0,right:0,bottom:0}}
+          style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,display:'flex',alignItems:'center',justifyContent:'center',backgroundColor:'rgba(0,0,0,0.45)',backdropFilter:'blur(4px)',padding:'16px'}}
           onClick={e => e.target === e.currentTarget && setShowModal(false)}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" style={{maxHeight:"85vh",overflowY:"auto",margin:"auto"}}>
+          <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)',width:'100%',maxWidth:'512px',maxHeight:'88vh',overflowY:'auto',margin:'auto'}}>
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
@@ -291,7 +292,8 @@ const UserManagement = () => {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
