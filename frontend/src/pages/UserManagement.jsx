@@ -23,6 +23,13 @@ const UserManagement = () => {
   const [formData, setFormData]   = useState({
     full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: ''
   });
+  
+  // Ensure form is always fresh when modal opens for Create (not Edit)
+  const openCreateModal = () => {
+    setEditUser(null);
+    setFormData({ full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '' });
+    setShowModal(true);
+  };
 
   const fetchUsers = async () => {
     try { const r = await api.get('/auth/users'); setUsers(Array.isArray(r.data) ? r.data : []); }
@@ -74,7 +81,7 @@ const UserManagement = () => {
           <h1 className="page-title">User Management</h1>
           <p className="page-sub">Manage system access, roles, and enterprise identity</p>
         </div>
-        <button onClick={() => { resetForm(); setShowModal(true); }} className="btn btn-primary">
+        <button onClick={openCreateModal} className="btn btn-primary">
           <UserPlus size={14} /> Create User
         </button>
       </div>
