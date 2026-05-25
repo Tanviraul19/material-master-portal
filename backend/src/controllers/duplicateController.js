@@ -14,7 +14,7 @@ const { normalizeDescription, similarityScore, DUPLICATE_THRESHOLD } = require('
 // ─────────────────────────────────────────────
 exports.suggestDescriptions = async (req, res) => {
   const { q } = req.query;
-  if (!q || q.trim().length < 2) return res.json({ suggestions: [], total: 0 });
+  if (!q || q.trim().length < 3) return res.json({ suggestions: [], total: 0 });
 
   try {
     const term = `%${q.trim()}%`;
@@ -24,10 +24,10 @@ exports.suggestDescriptions = async (req, res) => {
     const masterQuery = isPostgres
       ? `SELECT original_description, source, material_type, material_code
          FROM material_descriptions WHERE original_description ILIKE $1
-         ORDER BY char_length(original_description) ASC LIMIT 20`
+         ORDER BY char_length(original_description) ASC LIMIT 15`
       : `SELECT original_description, source, material_type, material_code
          FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)
-         ORDER BY length(original_description) ASC LIMIT 20`;
+         ORDER BY length(original_description) ASC LIMIT 15`;
     const fromMaster = isPostgres
       ? await (async () => { const [r] = await sequelize.query(masterQuery, { bind: [term] }); return r; })()
       : await db.query(masterQuery, [term]);

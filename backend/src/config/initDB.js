@@ -48,6 +48,8 @@ const initDB = async () => {
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_ah_request ON approval_history(request_id)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_logs(request_id)`).catch(() => {});
+        await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_orig ON material_descriptions(original_description)`).catch(() => {});
+        await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_mat_desc_norm ON material_descriptions(normalized_key)`).catch(() => {});
 
         // Seed users if empty
         const existing = await sequelize.query(`SELECT COUNT(*) as cnt FROM users`, { type: sequelize.constructor.QueryTypes.SELECT });
