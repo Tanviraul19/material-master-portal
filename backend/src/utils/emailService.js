@@ -137,10 +137,12 @@ async function sendMailSafe(options) {
       html:    html,
     });
 
-    console.log(`   ↳ [SENT ✓] messageId=${info.messageId} to=${recipient}`);
+    console.log(`   ↳ [SENT ✓] messageId=${info.messageId} to=${recipient} response=${info.response}`);
     return info;
   } catch (err) {
     console.error(`   ↳ [ERROR ✗] trigger="${options.trigger}": ${err.message}`);
+    console.error(`   ↳ SMTP Details: host=${SMTP_HOST} port=${SMTP_PORT} user=${EMAIL_USER}`);
+    console.error(`   ↳ Error code: ${err.code} | responseCode: ${err.responseCode} | response: ${err.response}`);
     return null;
   }
 }
