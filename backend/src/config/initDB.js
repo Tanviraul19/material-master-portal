@@ -102,15 +102,27 @@ const autoSeedMasterData = async () => {
         const path = require('path');
         const DATA_DIR = path.join(__dirname, '../../../data');
 
-        // Check if already seeded
+        // Check if master_material_groups already seeded
         const [mgCheck] = await sequelize.query(
             `SELECT COUNT(*) as cnt FROM master_material_groups`,
             { type: sequelize.constructor.QueryTypes.SELECT }
         );
         const mgCount = parseInt(mgCheck?.cnt || mgCheck?.count || 0);
-        if (mgCount > 0) {
-            console.log(`✅ Master data already seeded (${mgCount} material groups)`);
+
+        // Check if material_descriptions already seeded (separate check)
+        const [descCheck] = await sequelize.query(
+            `SELECT COUNT(*) as cnt FROM material_descriptions`,
+            { type: sequelize.constructor.QueryTypes.SELECT }
+        );
+        const descCount = parseInt(descCheck?.cnt || descCheck?.count || 0);
+
+        if (mgCount > 0 && descCount > 0) {
+            console.log(`✅ Master data already seeded (${mgCount} material groups, ${descCount} descriptions)`);
             return;
+        }
+
+        if (mgCount > 0) {
+            console.log(`✅ Material groups already seeded (${mgCount}). Checking descriptions...`);
         }
 
         console.log('🌱 Seeding master data from Excel files...');

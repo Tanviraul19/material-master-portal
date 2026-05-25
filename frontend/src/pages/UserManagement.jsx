@@ -176,10 +176,10 @@ const UserManagement = () => {
       {/* ── Modal ── */}
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" style={{position:"fixed",top:0,left:0,right:0,bottom:0}}
           onClick={e => e.target === e.currentTarget && setShowModal(false)}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" style={{maxHeight:"85vh",overflowY:"auto",margin:"auto"}}>
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
@@ -197,8 +197,8 @@ const UserManagement = () => {
               </button>
             </div>
 
-            {/* Scrollable Body */}
-            <div className="overflow-y-auto flex-1">
+            {/* Body */}
+            <div>
               <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
 
                 {/* Full Name */}
