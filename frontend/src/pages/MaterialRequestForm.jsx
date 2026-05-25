@@ -593,6 +593,42 @@ const MaterialRequestForm = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* ── Duplicate EXACT MATCH Warning ── */}
+                <AnimatePresence>
+                  {isDuplicateBlocked && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                      className="mt-1 rounded-xl border border-red-300 bg-red-50 shadow-md overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 px-3 py-2 bg-red-100 border-b border-red-200">
+                        <Ban size={12} className="text-red-600 shrink-0" />
+                        <span className="text-[10px] font-black text-red-700 uppercase tracking-wider">
+                          Duplicate Found — Cannot Submit
+                        </span>
+                      </div>
+                      <ul className="max-h-[120px] overflow-y-auto">
+                        {duplicates.map((d, i) => (
+                          <li key={i} className="px-4 py-2 border-b border-red-100 last:border-0">
+                            <p className="text-[12px] font-bold text-red-800 leading-tight">
+                              <span className="text-red-500 mr-2">[{d.material_code || d.source || 'Existing'}]</span>
+                              {d.original_description}
+                            </p>
+                            <p className="text-[9px] text-red-400 mt-0.5 uppercase font-bold tracking-tight">
+                              {d.match_type === 'exact' ? '100% Exact Match' : `${d.similarity}% Similar`}
+                              {d.material_type ? ` · ${d.material_type}` : ''}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="px-4 py-1.5 bg-red-50 border-t border-red-100">
+                        <p className="text-[9px] font-medium text-red-600">
+                          ⚠️ This description already exists. Please enter a unique description to proceed.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="col-span-7 space-y-1.5">
@@ -692,11 +728,6 @@ const MaterialRequestForm = () => {
         <div className="px-8 py-5 border-t border-slate-200 bg-white/80 flex items-center justify-between">
           <img src={virajLogo} alt="" className="h-6 opacity-40 grayscale" />
           <div className="flex items-center gap-3">
-            {isDuplicateBlocked && (
-              <span className="text-red-500 text-[11px] font-bold flex items-center gap-1">
-                <Ban size={12} /> Duplicate Detected
-              </span>
-            )}
             <button 
               type="button" 
               onClick={handleSaveDraft} 
@@ -706,16 +737,11 @@ const MaterialRequestForm = () => {
             </button>
             <button 
               onClick={handleSubmit}
-              disabled={isSubmitting || isDuplicateBlocked || isCheckingDuplicate}
-              title={isDuplicateBlocked ? 'Duplicate description — enter a unique description' : ''}
-              className={`px-10 py-2.5 font-black text-[11px] rounded-lg uppercase tracking-[0.1em] shadow-lg active:scale-95 transition-all flex items-center gap-2 ${
-                isDuplicateBlocked ? 'bg-red-500 text-white cursor-not-allowed shadow-red-500/20' :
-                isCheckingDuplicate ? 'bg-blue-400 text-white cursor-wait shadow-blue-400/20' :
-                'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
-              }`}
+              disabled={isSubmitting}
+              className="px-10 py-2.5 bg-blue-600 text-white font-black text-[11px] rounded-lg uppercase tracking-[0.1em] shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-60"
             >
-              {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : isDuplicateBlocked ? <Ban size={14} /> : <Send size={14} />}
-              {isDuplicateBlocked ? 'Duplicate Blocked' : isCheckingDuplicate ? 'Checking...' : 'Submit Request'}
+              {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Submit Request
             </button>
           </div>
         </div>
