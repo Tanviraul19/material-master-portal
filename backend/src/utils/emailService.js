@@ -10,6 +10,27 @@ const FROM_EMAIL       = process.env.EMAIL_USER || 'materialmasterportal@gmail.c
 const FROM_NAME        = 'Material Master Portal';
 const FRONTEND_URL     = process.env.FRONTEND_URL || 'https://material-master-frontend.onrender.com';
 
+// ── Test Email Routing ────────────────────────────────────────────────────────
+// Maps workflow roles → test inboxes (set via Render Environment Variables)
+// Remove TEST_ variables from Render env to send to real DB emails in production
+function getTestEmail(role, realEmail) {
+  const testUser      = process.env.TEST_USER_EMAIL;
+  const testAdmin     = process.env.TEST_ADMIN_EMAIL;
+  const testApprover  = process.env.TEST_APPROVER_EMAIL;
+  const testPlantDept = process.env.TEST_PLANT_DEPT_EMAIL;
+
+  // If no TEST_ vars set — use real email (production mode)
+  if (!testUser && !testAdmin && !testApprover && !testPlantDept) return realEmail;
+
+  const r = String(role || '').toUpperCase().trim();
+  if (r === 'USER')                                                          return testUser || realEmail;
+  if (['IT TEAM', 'SUPER ADMIN', 'ADMIN'].includes(r))                      return testAdmin || realEmail;
+  if (r === 'GST TEAM')                                                      return testApprover || realEmail;
+  if (['PLANT HEAD','STORE HEAD','PURCHASE TEAM',
+       'MECHANICAL TEAM','ELECTRICAL TEAM','DEPARTMENT'].includes(r))        return testPlantDept || realEmail;
+  return realEmail;
+}
+
 if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
   console.log(`✅ [EmailService] SendGrid HTTP API ready — sender: ${FROM_EMAIL}`);
 } else {
@@ -17,7 +38,10 @@ if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
 }
 
 // ── Core HTTP send via SendGrid REST API ──────────────────────────────────────
-async function sendViaSendGrid(to, subject, html) {
+async function sendViaSendGrid(to, subject, html, role) {
+  // Apply test email routing if TEST_ vars are set in environment
+  const recipient = role ? getTestEmail(role, to) : to;
+  to = recipient;
   if (!SENDGRID_API_KEY || !SENDGRID_API_KEY.startsWith('SG.')) {
     console.warn(`[Email] Skipping — no valid SendGrid API key`);
     return null;
@@ -151,7 +175,8 @@ exports.sendUserCreatedEmail = async (personalEmail, fullName, tempPassword, wor
   return sendViaSendGrid(
     personalEmail,
     'Material Master Portal — Your Account Has Been Created',
-    buildHtmlTemplate({ title: 'Account Created', badgeText: 'New Account', badgeColor: '#10b981', contentHtml, actionLink: loginUrl, actionText: 'Login to Portal →' })
+    buildHtmlTemplate({ title: 'Account Created', badgeText: 'New Account', badgeColor: '#10b981', contentHtml, actionLink: loginUrl, actionText: 'Login to Portal →' }),
+    'USER'
   );
 };
 
@@ -180,7 +205,8 @@ exports.sendRequestCreatedEmail = async (creatorEmail, request) => {
   return sendViaSendGrid(
     creatorEmail,
     'Material Creation Request Submitted',
-    buildHtmlTemplate({ title: 'Request Submitted', badgeText: 'Submitted', badgeColor: '#3b82f6', contentHtml, actionLink: portalUrl, actionText: 'Track Your Request →' })
+    buildHtmlTemplate({ title: 'Request Submitted', badgeText: 'Submitted', badgeColor: '#3b82f6', contentHtml, actionLink: portalUrl, actionText: 'Track Your Request →' }),
+    'USER'
   );
 };
 
@@ -215,7 +241,8 @@ exports.sendWorkflowStageEmail = async (approverEmail, approverRole, request) =>
   return sendViaSendGrid(
     approverEmail,
     `Action Required: ${request.req_number} — Pending Your Review`,
-    buildHtmlTemplate({ title: 'Action Required', badgeText: `Pending ${approverRole}`, badgeColor: '#f59e0b', contentHtml, actionLink: portalUrl, actionText: 'Review in Portal →' })
+    buildHtmlTemplate({ title: 'Action Required', badgeText: `Pending ${approverRole}`, badgeColor: '#f59e0b', contentHtml, actionLink: portalUrl, actionText: 'Review in Portal →' }),
+    approverRole
   );
 };
 
@@ -247,7 +274,8 @@ exports.sendWorkflowActionEmail = async (creatorEmail, request, action, actorRol
   return sendViaSendGrid(
     creatorEmail,
     `Update: ${request.req_number} — ${heading}`,
-    buildHtmlTemplate({ title: heading, badgeText, badgeColor, contentHtml, actionLink: portalUrl, actionText: action === 'SEND_BACK' ? 'Edit & Resubmit →' : 'View Status →' })
+    buildHtmlTemplate({ title: heading, badgeText, badgeColor, contentHtml, actionLink: portalUrl, actionText: action === 'SEND_BACK' ? 'Edit & Resubmit →' : 'View Status →' }),
+    'USER'
   );
 };
 
@@ -274,6 +302,7 @@ exports.sendFinalApprovalEmail = async (creatorEmail, request) => {
   return sendViaSendGrid(
     creatorEmail,
     `Approved: ${request.req_number} — Completed Successfully`,
-    buildHtmlTemplate({ title: 'Request Approved', badgeText: 'Fully Approved', badgeColor: '#10b981', contentHtml, actionLink: portalUrl, actionText: 'View Approved Material →' })
+    buildHtmlTemplate({ title: 'Request Approved', badgeText: 'Fully Approved', badgeColor: '#10b981', contentHtml, actionLink: portalUrl, actionText: 'View Approved Material →' }),
+    'USER'
   );
 };
