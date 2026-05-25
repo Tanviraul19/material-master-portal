@@ -193,6 +193,36 @@ const autoSeedMasterData = async () => {
             }
         } catch (e) { console.warn('Plants seed skip:', e.message); }
 
+        // Material Descriptions for duplicate detection (86k records)
+        try {
+            const wb2 = XLSX.readFile(path.join(DATA_DIR, 'All Material Types.XLSX'));
+            const descRows = XLSX.utils.sheet_to_json(wb2.Sheets['Sheet1'], { defval: '' });
+            const { normalizeDescription } = require('../utils/searchHelper');
+            let descIns = 0;
+            for (const r of descRows) {
+                const orig = String(r['Material description'] || '').trim();
+                const mtype = String(r['MTyp'] || '').trim();
+                const mcode = String(r['Material'] || '').trim();
+                if (!orig || orig.length < 3) continue;
+                const normKey = normalizeDescription(orig);
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO material_descriptions (original_description, normalized_key, source, material_type, material_code) VALUES ($1, $2, 'excel', $3, $4) ON CONFLICT DO NOTHING`,
+                            { bind: [orig, normKey, mtype, mcode] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO material_descriptions (original_description, normalized_key, source, material_type, material_code) VALUES (?, ?, 'excel', ?, ?)`,
+                            { replacements: [orig, normKey, mtype, mcode] }
+                        );
+                    }
+                    descIns++;
+                } catch (_) {}
+            }
+            if (descIns > 0) console.log(`✅ Material descriptions seeded: ${descIns} records`);
+        } catch (e) { console.warn('Descriptions seed skip:', e.message); }
+
         console.log(`✅ Master data seeded — MG:${mgIns} UOM:${uomIns} Plants:${plantIns}`);
     } catch (err) {
         console.warn('⚠️ Master data auto-seed failed (non-critical):', err.message);

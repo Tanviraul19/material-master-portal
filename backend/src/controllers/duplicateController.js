@@ -142,16 +142,23 @@ exports.checkDuplicate = async (req, res) => {
     if (inputWords.length === 0) return res.json({ duplicates: [], input_normalized: inputNorm });
 
     // Build LIKE conditions for at least one shared word (reduces scan from 80k to ~hundreds)
-    const likeClauses = inputWords.map(() => 'normalized_key LIKE ?').join(' OR ');
-    const likeParams = inputWords.map(w => `%${w}%`);
-
-    const candidates = await db.query(
-      `SELECT original_description, normalized_key, source, material_type
-       FROM material_descriptions
-       WHERE ${likeClauses}
-       LIMIT 500`,
-      likeParams
-    );
+    let candidates = [];
+    if (isPostgres) {
+      const binds = inputWords.map(w => `%${w}%`);
+      const ilikeConditions = inputWords.map((_, i) => `normalized_key ILIKE $${i+1}`).join(' OR ');
+      const [pgRows] = await sequelize.query(
+        `SELECT original_description, normalized_key, source, material_type FROM material_descriptions WHERE ${ilikeConditions} LIMIT 500`,
+        { bind: binds }
+      );
+      candidates = pgRows;
+    } else {
+      const likeClauses = inputWords.map(() => 'normalized_key LIKE ?').join(' OR ');
+      const likeParams = inputWords.map(w => `%${w}%`);
+      candidates = await db.query(
+        `SELECT original_description, normalized_key, source, material_type FROM material_descriptions WHERE ${likeClauses} LIMIT 500`,
+        likeParams
+      );
+    }
 
     // Score each candidate
     const scored = candidates
