@@ -56,20 +56,25 @@ exports.createRequest = async (req, res) => {
 
     const [newReq] = await db.query('SELECT * FROM material_requests WHERE req_number = ?', [req_number]);
 
-    // ── Emails (fire-and-forget) ──────────────────────────────────────────
-    // 1. Confirm to requester
-    const [requester] = await db.query('SELECT email, full_name FROM users WHERE id = ?', [requester_id]);
-    if (requester?.email) {
-      emailService.sendRequestCreatedEmail(requester.email, newReq).catch(e => {
-        console.error('[Email] sendRequestCreatedEmail error:', e.message);
-      });
+    // ── Emails (awaited — reliable on Render) ────────────────────────────────
+    // 1. Confirm to requester — use personal_email (real inbox) if available
+    const [requester] = await db.query('SELECT email, personal_email, full_name FROM users WHERE id = ?', [requester_id]);
+    const requesterEmailTarget = requester?.personal_email || requester?.email;
+    if (requesterEmailTarget) {
+      try {
+        await emailService.sendRequestCreatedEmail(requesterEmailTarget, newReq);
+        console.log(`[Email] ✅ Request confirmation sent to: ${requesterEmailTarget}`);
+      } catch (e) { console.error('[Email] sendRequestCreatedEmail error:', e.message); }
     }
 
-    // 2. Notify Plant Head
-    if (plantHeadUser?.email) {
-      emailService.sendWorkflowStageEmail(plantHeadUser.email, 'Plant Head', newReq).catch(e => {
-        console.error('[Email] sendWorkflowStageEmail (Plant Head) error:', e.message);
-      });
+    // 2. Notify Plant Head — use personal_email if available
+    const [phUser] = await db.query('SELECT email, personal_email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1', ['Plant Head']);
+    const phEmailTarget = phUser?.personal_email || phUser?.email;
+    if (phEmailTarget) {
+      try {
+        await emailService.sendWorkflowStageEmail(phEmailTarget, 'Plant Head', newReq);
+        console.log(`[Email] ✅ Plant Head notified: ${phEmailTarget}`);
+      } catch (e) { console.error('[Email] sendWorkflowStageEmail (Plant Head) error:', e.message); }
     }
 
     res.status(201).json(newReq);

@@ -60,34 +60,49 @@ async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, 
   try {
     const [[freshRequest], [requester]] = await Promise.all([
       db.query('SELECT * FROM material_requests WHERE id = ?', [requestId]),
-      db.query('SELECT email FROM users WHERE id = ?', [requesterId]),
+      db.query('SELECT email, personal_email FROM users WHERE id = ?', [requesterId]),
     ]);
     if (!freshRequest) return;
 
-    const requesterEmail = requester?.email;
+    // Use personal_email (real inbox) if available, else work email
+    const requesterEmail = requester?.personal_email || requester?.email;
 
-    // A. Notify requester on every action except RESUBMIT (they initiated it)
+    console.log(`[WorkflowEmail] action=${action} | requester=${requesterEmail} | nextRole=${nextApproverRole}`);
+
+    // A. Notify requester on every action except RESUBMIT
     if (requesterEmail && action !== 'RESUBMIT') {
-      emailService.sendWorkflowActionEmail(requesterEmail, freshRequest, action, actorRole, actorName, comments, nextStatus)
-        .catch(e => console.error('[Email] sendWorkflowActionEmail error:', e.message));
+      try {
+        await emailService.sendWorkflowActionEmail(requesterEmail, freshRequest, action, actorRole, actorName, comments, nextStatus);
+        console.log(`[WorkflowEmail] ✅ Action email sent to requester: ${requesterEmail}`);
+      } catch (e) { console.error('[WorkflowEmail] Action email error:', e.message); }
 
-      // B. Extra final approval email when IT Team fully approves
+      // B. Final approval special email
       if (action === 'APPROVE' && nextStatus === 'Approved') {
-        emailService.sendFinalApprovalEmail(requesterEmail, freshRequest)
-          .catch(e => console.error('[Email] sendFinalApprovalEmail error:', e.message));
+        try {
+          await emailService.sendFinalApprovalEmail(requesterEmail, freshRequest);
+          console.log(`[WorkflowEmail] ✅ Final approval email sent to: ${requesterEmail}`);
+        } catch (e) { console.error('[WorkflowEmail] Final approval email error:', e.message); }
       }
     }
 
     // C. Notify next approver in queue
     if (nextApproverRole && nextStatus !== 'Approved' && nextStatus !== 'Rejected') {
       const approver = await getApproverForRole(nextApproverRole);
-      if (approver?.email) {
-        emailService.sendWorkflowStageEmail(approver.email, nextApproverRole, freshRequest)
-          .catch(e => console.error('[Email] sendWorkflowStageEmail error:', e.message));
+      // Use personal_email of approver if available
+      const [approverFull] = await sequelize.query(
+        `SELECT email, personal_email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`,
+        { replacements: [nextApproverRole], type: sequelize.constructor.QueryTypes.SELECT }
+      );
+      const approverEmail = approverFull?.personal_email || approverFull?.email || approver?.email;
+      if (approverEmail) {
+        try {
+          await emailService.sendWorkflowStageEmail(approverEmail, nextApproverRole, freshRequest);
+          console.log(`[WorkflowEmail] ✅ Stage email sent to ${nextApproverRole}: ${approverEmail}`);
+        } catch (e) { console.error('[WorkflowEmail] Stage email error:', e.message); }
       }
     }
   } catch (err) {
-    console.error('[Email] dispatchWorkflowEmails error:', err.message || err);
+    console.error('[WorkflowEmail] dispatchWorkflowEmails error:', err.message || err);
   }
 }
 
