@@ -673,6 +673,36 @@ const MaterialRequestForm = () => {
               </div>
             </div>
 
+            {/* Purchase Group & HSN/SAC Code */}
+            <div className="grid grid-cols-12 gap-6 items-end">
+              <div className="col-span-7">
+                <SearchableDropdown
+                  label="Purchasing Group"
+                  compact
+                  value={formData.purchase_group}
+                  onChange={(code) => setField('purchase_group', code)}
+                  fetchOptions={fetchPurchaseGroups}
+                  placeholder="Search purchasing group"
+                />
+              </div>
+              <div className="col-span-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                    HSN/SAC Code
+                  </label>
+                  <input
+                    name="control_code"
+                    maxLength={8}
+                    className={`w-full px-4 py-2.5 bg-white border rounded-xl outline-none transition-all text-[13px] font-bold shadow-sm placeholder:font-medium placeholder:text-slate-300 ${errors.control_code ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100/50'}`}
+                    value={formData.control_code}
+                    onChange={handleHSNChange}
+                    placeholder="8-digit numeric code"
+                  />
+                  {errors.control_code && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase tracking-tight pl-1">{errors.control_code}</p>}
+                </div>
+              </div>
+            </div>
+
             {/* UOM & Integration Panel */}
             <div className="grid grid-cols-12 gap-6 items-stretch pt-1">
               <div className="col-span-4 self-start pt-1">
