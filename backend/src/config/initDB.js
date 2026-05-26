@@ -125,9 +125,20 @@ const autoSeedMasterData = async () => {
         );
         const descCount = parseInt(descCheck?.cnt || descCheck?.count || 0);
 
-        if (mgCount > 0 && descCount > 0) {
-            console.log(`✅ Master data already seeded (${mgCount} material groups, ${descCount} descriptions)`);
+        // Check purchase groups separately
+        const [pgCheck] = await sequelize.query(
+            `SELECT COUNT(*) as cnt FROM master_purchase_groups`,
+            { type: sequelize.constructor.QueryTypes.SELECT }
+        );
+        const pgCount = parseInt(pgCheck?.cnt || pgCheck?.count || 0);
+
+        if (mgCount > 0 && descCount > 0 && pgCount > 0) {
+            console.log(`✅ Master data already seeded (${mgCount} material groups, ${descCount} descriptions, ${pgCount} purchase groups)`);
             return;
+        }
+
+        if (mgCount > 0 && descCount > 0) {
+            console.log(`✅ MG+Descriptions seeded. Checking purchase groups...`);
         }
 
         if (mgCount > 0) {
@@ -187,6 +198,33 @@ const autoSeedMasterData = async () => {
                 } catch (_) {}
             }
         } catch (e) { console.warn('UOM seed skip:', e.message); }
+
+        // Purchase Groups (Plant Details Sheet3)
+        try {
+            const wbPG = XLSX.readFile(path.join(DATA_DIR, 'Plant Details.xlsx'));
+            const pgRows = XLSX.utils.sheet_to_json(wbPG.Sheets['Sheet3'], { defval: '' });
+            let pgIns = 0;
+            for (const r of pgRows) {
+                const code = String(r['Purchasing Gro'] || r['Purchasing Group'] || '').trim();
+                const desc = String(r['Desctiption'] || r['Description'] || '').trim();
+                if (!code) continue;
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO master_purchase_groups (pg_code, pg_description) VALUES ($1, $2) ON CONFLICT (pg_code) DO NOTHING`,
+                            { bind: [code, desc] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO master_purchase_groups (pg_code, pg_description) VALUES (?, ?)`,
+                            { replacements: [code, desc] }
+                        );
+                    }
+                    pgIns++;
+                } catch (_) {}
+            }
+            if (pgIns > 0) console.log(`✅ Purchase groups seeded: ${pgIns} records`);
+        } catch (e) { console.warn('Purchase groups seed skip:', e.message); }
 
         // Plants
         try {
