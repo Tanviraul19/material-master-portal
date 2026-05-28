@@ -53,6 +53,10 @@ const App = () => {
               {/* User Only Restricted */}
               <Route element={<ProtectedRoute allowedRoles={['User']} />}>
                  <Route path="/request/new" element={<ErrorBoundary><MaterialRequestForm /></ErrorBoundary>} />
+              </Route>
+
+              {/* My Requests — accessible by all roles (email links redirect here) */}
+              <Route element={<ProtectedRoute allowedRoles={['User', 'IT Team', 'Super Admin', 'Admin', 'Plant Head', 'Store Head', 'Purchase Team', 'Mechanical Team', 'Electrical Team', 'GST Team']} />}>
                  <Route path="/requests/my" element={<ErrorBoundary><MyRequests /></ErrorBoundary>} />
               </Route>
 
