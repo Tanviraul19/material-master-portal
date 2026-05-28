@@ -134,14 +134,19 @@ const autoSeedMasterData = async () => {
         );
         const pgCount = parseInt(pgCheck?.cnt || pgCheck?.count || 0);
 
-        if (mgCount > 0 && descCount > 0 && pgCount > 0) {
-            console.log(`✅ Master data already seeded (${mgCount} material groups, ${descCount} descriptions, ${pgCount} purchase groups)`);
+        // Check control codes separately
+        const [ccCheck] = await sequelize.query(
+            `SELECT COUNT(*) as cnt FROM master_control_codes`,
+            { type: sequelize.constructor.QueryTypes.SELECT }
+        );
+        const ccCount = parseInt(ccCheck?.cnt || ccCheck?.count || 0);
+
+        if (mgCount > 0 && descCount > 0 && pgCount > 0 && ccCount > 0) {
+            console.log(`✅ Master data already seeded (MG:${mgCount} Desc:${descCount} PG:${pgCount} CC:${ccCount})`);
             return;
         }
 
-        if (mgCount > 0 && descCount > 0) {
-            console.log(`✅ MG+Descriptions seeded. Checking purchase groups...`);
-        }
+        console.log(`✅ Partial seed detected. MG:${mgCount} Desc:${descCount} PG:${pgCount} CC:${ccCount} — seeding missing data...`);
 
         if (mgCount > 0) {
             console.log(`✅ Material groups already seeded (${mgCount}). Checking descriptions...`);

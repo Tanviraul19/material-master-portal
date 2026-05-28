@@ -259,20 +259,27 @@ exports.handleApproval = async (req, res) => {
       const code = String(editData.control_code || '').trim();
       if (code) {
         try {
-          const validRows = await sequelize.query(
-            `SELECT control_code FROM master_control_codes WHERE control_code = ? LIMIT 1`,
-            { replacements: [code], type: sequelize.constructor.QueryTypes.SELECT }
-          );
-          const [totalRow] = await sequelize.query(
+          // Check total count first
+          const totalRows = await sequelize.query(
             `SELECT COUNT(*) as cnt FROM master_control_codes`,
             { type: sequelize.constructor.QueryTypes.SELECT }
           );
-          const total = parseInt(totalRow?.cnt || 0);
-          if (total > 0 && validRows.length === 0) {
-            await t.rollback();
-            return res.status(400).json({
-              error: `Invalid Control Code: "${code}" does not exist in HSN Master. Please enter a valid HSN/SAC code.`
-            });
+          const total = parseInt(totalRows[0]?.cnt || 0);
+          console.log(`[ControlCode] Validating code="${code}" | total HSN codes in DB=${total}`);
+          
+          if (total > 0) {
+            // Check if code exists
+            const validRows = await sequelize.query(
+              `SELECT control_code FROM master_control_codes WHERE UPPER(control_code) = UPPER(?) LIMIT 1`,
+              { replacements: [code], type: sequelize.constructor.QueryTypes.SELECT }
+            );
+            console.log(`[ControlCode] Found: ${validRows.length} matches`);
+            if (validRows.length === 0) {
+              await t.rollback();
+              return res.status(400).json({
+                error: `Invalid Control Code: "${code}" does not exist in HSN Master database. Please enter a valid HSN/SAC code.`
+              });
+            }
           }
         } catch (validErr) {
           console.warn('[ControlCode] Validation skip:', validErr.message);
