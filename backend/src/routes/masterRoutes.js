@@ -14,4 +14,7 @@ router.get('/storage-locations',              verifyToken, mc.getStorageLocation
 router.get('/storage-locations/:plant/:sloc', verifyToken, mc.getStorageLocationByCode);
 router.get('/stats',                          verifyToken, mc.getStats);
 
+router.get('/control-codes',               verifyToken, mc.getControlCodes);
+router.get('/control-codes/validate/:code', verifyToken, mc.validateControlCode);
+
 module.exports = router;

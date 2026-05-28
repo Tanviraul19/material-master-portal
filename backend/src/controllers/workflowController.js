@@ -254,6 +254,32 @@ exports.handleApproval = async (req, res) => {
       }
     }
 
+    // ── Validate control_code against HSN Master when GST Team submits ─────
+    if (editData && editData.control_code !== undefined && userRole === 'GST Team') {
+      const code = String(editData.control_code || '').trim();
+      if (code) {
+        try {
+          const validRows = await sequelize.query(
+            `SELECT control_code FROM master_control_codes WHERE control_code = ? LIMIT 1`,
+            { replacements: [code], type: sequelize.constructor.QueryTypes.SELECT }
+          );
+          const [totalRow] = await sequelize.query(
+            `SELECT COUNT(*) as cnt FROM master_control_codes`,
+            { type: sequelize.constructor.QueryTypes.SELECT }
+          );
+          const total = parseInt(totalRow?.cnt || 0);
+          if (total > 0 && validRows.length === 0) {
+            await t.rollback();
+            return res.status(400).json({
+              error: `Invalid Control Code: "${code}" does not exist in HSN Master. Please enter a valid HSN/SAC code.`
+            });
+          }
+        } catch (validErr) {
+          console.warn('[ControlCode] Validation skip:', validErr.message);
+        }
+      }
+    }
+
     // Field edits
     if (editData && (userRole === 'GST Team' || userRole === 'Store Head' || isAdmin)) {
       const allowedEdit = EDITABLE_FIELDS[userRole] || [];

@@ -237,3 +237,55 @@ exports.getStats = async (req, res) => {
     res.json(stats);
   } catch (e) { res.status(500).json({ error: e.message }); }
 };
+
+// GET /api/master/control-codes?q= — search HSN/control codes
+exports.getControlCodes = async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    let rows;
+    if (isPostgres) {
+      if (q) {
+        const [r] = await sequelize.query(
+          `SELECT control_code as code, description FROM master_control_codes
+           WHERE control_code ILIKE $1 OR description ILIKE $1
+           ORDER BY control_code LIMIT 50`,
+          { bind: [`%${q}%`] }
+        );
+        rows = r;
+      } else {
+        const [r] = await sequelize.query(
+          `SELECT control_code as code, description FROM master_control_codes ORDER BY control_code LIMIT 50`
+        );
+        rows = r;
+      }
+    } else {
+      const term = `%${q}%`;
+      rows = q
+        ? await db.query(`SELECT control_code as code, description FROM master_control_codes WHERE control_code LIKE ? OR description LIKE ? ORDER BY control_code LIMIT 50`, [term, term])
+        : await db.query(`SELECT control_code as code, description FROM master_control_codes ORDER BY control_code LIMIT 50`);
+    }
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+// GET /api/master/control-codes/validate/:code — check if code exists
+exports.validateControlCode = async (req, res) => {
+  try {
+    const code = req.params.code;
+    let rows;
+    if (isPostgres) {
+      const [r] = await sequelize.query(
+        `SELECT control_code as code, description FROM master_control_codes WHERE control_code = $1 LIMIT 1`,
+        { bind: [code] }
+      );
+      rows = r;
+    } else {
+      rows = await db.query(`SELECT control_code as code, description FROM master_control_codes WHERE control_code = ? LIMIT 1`, [code]);
+    }
+    if (rows.length > 0) {
+      res.json({ valid: true, code: rows[0].code, description: rows[0].description });
+    } else {
+      res.json({ valid: false, message: `Control code "${code}" not found in HSN Master database.` });
+    }
+  } catch (e) { res.status(500).json({ error: e.message }); }
+};

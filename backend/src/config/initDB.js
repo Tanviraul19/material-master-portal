@@ -16,6 +16,7 @@ const initDB = async () => {
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_purchase_groups (id SERIAL PRIMARY KEY, pg_code TEXT UNIQUE NOT NULL, pg_description TEXT)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_material_groups (id SERIAL PRIMARY KEY, mg_code TEXT UNIQUE NOT NULL, short_description TEXT, long_description TEXT)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS material_descriptions (id SERIAL PRIMARY KEY, original_description TEXT NOT NULL, normalized_key TEXT NOT NULL, source TEXT DEFAULT 'excel', material_type TEXT, material_code TEXT, imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+            await sequelize.query(`CREATE TABLE IF NOT EXISTS master_control_codes (id SERIAL PRIMARY KEY, control_code TEXT UNIQUE NOT NULL, description TEXT, cl TEXT, ctr TEXT, imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS approval_history (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, approver_id INTEGER, stage TEXT NOT NULL, action TEXT NOT NULL, comments TEXT, fields_changed TEXT, is_restart INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, request_id INTEGER, type TEXT NOT NULL, message TEXT NOT NULL, is_read INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, actor_id INTEGER, actor_name TEXT, actor_role TEXT, action TEXT NOT NULL, field_name TEXT, old_value TEXT, new_value TEXT, reason TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
@@ -29,6 +30,7 @@ const initDB = async () => {
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_purchase_groups (id INTEGER PRIMARY KEY AUTOINCREMENT, pg_code TEXT UNIQUE NOT NULL, pg_description TEXT)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_material_groups (id INTEGER PRIMARY KEY AUTOINCREMENT, mg_code TEXT UNIQUE NOT NULL, short_description TEXT, long_description TEXT)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS material_descriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, original_description TEXT NOT NULL, normalized_key TEXT NOT NULL, source TEXT DEFAULT 'excel', material_type TEXT, material_code TEXT, imported_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+            await sequelize.query(`CREATE TABLE IF NOT EXISTS master_control_codes (id INTEGER PRIMARY KEY AUTOINCREMENT, control_code TEXT UNIQUE NOT NULL, description TEXT, cl TEXT, ctr TEXT, imported_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS approval_history (id INTEGER PRIMARY KEY AUTOINCREMENT, request_id INTEGER NOT NULL, approver_id INTEGER, stage TEXT NOT NULL, action TEXT NOT NULL, comments TEXT, fields_changed TEXT, is_restart INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, request_id INTEGER, type TEXT NOT NULL, message TEXT NOT NULL, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, request_id INTEGER NOT NULL, actor_id INTEGER, actor_name TEXT, actor_role TEXT, action TEXT NOT NULL, field_name TEXT, old_value TEXT, new_value TEXT, reason TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
@@ -225,6 +227,35 @@ const autoSeedMasterData = async () => {
             }
             if (pgIns > 0) console.log(`✅ Purchase groups seeded: ${pgIns} records`);
         } catch (e) { console.warn('Purchase groups seed skip:', e.message); }
+
+        // Control Codes (HSN Master.XLSX — Column C = Control code, Column D = Description)
+        try {
+            const wbHSN = XLSX.readFile(path.join(DATA_DIR, 'HSN Master.XLSX'));
+            const hsnRows = XLSX.utils.sheet_to_json(wbHSN.Sheets[wbHSN.SheetNames[0]], { defval: '' });
+            let hsnIns = 0;
+            for (const r of hsnRows) {
+                const code = String(r['Control code'] || r['Control Code'] || r['control_code'] || '').trim();
+                const desc = String(r['Description'] || '').trim();
+                const cl   = String(r['Cl.'] || r['Cl'] || '').trim();
+                const ctr  = String(r['Ctr'] || '').trim();
+                if (!code) continue;
+                try {
+                    if (isPostgres) {
+                        await sequelize.query(
+                            `INSERT INTO master_control_codes (control_code, description, cl, ctr) VALUES ($1, $2, $3, $4) ON CONFLICT (control_code) DO NOTHING`,
+                            { bind: [code, desc, cl, ctr] }
+                        );
+                    } else {
+                        await sequelize.query(
+                            `INSERT OR IGNORE INTO master_control_codes (control_code, description, cl, ctr) VALUES (?, ?, ?, ?)`,
+                            { replacements: [code, desc, cl, ctr] }
+                        );
+                    }
+                    hsnIns++;
+                } catch (_) {}
+            }
+            if (hsnIns > 0) console.log(`✅ Control codes (HSN) seeded: ${hsnIns} records`);
+        } catch (e) { console.warn('Control codes seed skip:', e.message); }
 
         // Plants
         try {
