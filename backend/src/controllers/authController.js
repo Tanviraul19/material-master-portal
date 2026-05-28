@@ -7,7 +7,8 @@ const emailService = require('../utils/emailService');
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const users = await db.query('SELECT * FROM users WHERE email = ? AND is_active = TRUE', [email]);
+    // Accept login with email OR username
+    const users = await db.query('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = TRUE', [email, email]);
     if (users.length === 0) return res.status(404).json({ message: 'User not found or account disabled' });
     const user = users[0];
     const passwordIsValid = await bcrypt.compare(password, user.password_hash);

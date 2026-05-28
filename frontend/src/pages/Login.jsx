@@ -622,17 +622,18 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-[11.5px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-                  Work Email
+                  Username / Email
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
-                    type="email"
+                    type="text"
                     className="input pl-10"
-                    placeholder="name@enterprise.com"
+                    placeholder="username or email@enterprise.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
+                    autoComplete="username"
                   />
                 </div>
               </div>
