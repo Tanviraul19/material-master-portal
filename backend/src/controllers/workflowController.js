@@ -8,9 +8,10 @@ const DEPT_ROLE_MAP = { 'Mechanical': 'Mechanical Team', 'Electrical': 'Electric
 const HAS_DEPT_APPROVER = ['Mechanical', 'Electrical'];
 const MATTYPE_DEPT_MAP  = { 'ZMIS': 'Mechanical', 'ZEIS': 'Electrical' };
 const EDITABLE_FIELDS   = {
-  'GST Team':   ['control_code'],
-  'Store Head': ['material_type', 'description', 'material_group'],
-  'IT Team':    ['material_type', 'plant', 'storage_location', 'description', 'long_description', 'uom', 'purchase_group', 'material_group', 'control_code'],
+  'GST Team':      ['control_code'],
+  'Purchase Team': ['purchase_group'],
+  'Store Head':    ['material_type', 'description', 'material_group'],
+  'IT Team':       ['material_type', 'plant', 'storage_location', 'description', 'long_description', 'uom', 'purchase_group', 'material_group', 'control_code'],
 };
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
