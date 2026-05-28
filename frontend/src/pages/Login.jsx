@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Loader2, ArrowRight, Shield, Zap, BarChart2, GitBranch, X, KeyRound, Eye, EyeOff, CheckCircle2, RefreshCw } from 'lucide-react';
 import virajLogo from '../assets/viraj-logo.png';
@@ -449,11 +449,13 @@ const Login = () => {
   const [loading, setLoading]   = useState(false);
   const { login } = useAuth();
   const navigate  = useNavigate();
+  const location  = useLocation();
+  const redirectTo = location.state?.from || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setLoading(true);
-    try { await login(email, password); navigate('/'); }
+    try { await login(email, password); navigate(redirectTo, { replace: true }); }
     catch (err) { setError(err.response?.data?.message || 'Invalid credentials. Please try again.'); }
     finally { setLoading(false); }
   };
