@@ -413,13 +413,16 @@ const MaterialRequestForm = () => {
   // ── Validation ─────────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-    if (!formData.material_type) e.material_type = 'Required';
-    if (!formData.plant) e.plant = 'Required';
+    if (!formData.material_type)    e.material_type    = 'Required';
+    if (!formData.plant)            e.plant            = 'Required';
     if (!formData.storage_location) e.storage_location = 'Required';
-    if (!formData.description) e.description = 'Required';
+    if (!formData.description)      e.description      = 'Required';
     if (formData.description.length > 40) e.description = 'Max 40 characters';
+    if (!formData.long_description) e.long_description = 'Required';
     if (formData.long_description.length > 200) e.long_description = 'Max 200 characters';
-    if (!formData.uom) e.uom = 'Required';
+    if (!formData.material_group)   e.material_group   = 'Required';
+    if (!formData.purchase_group)   e.purchase_group   = 'Required';
+    if (!formData.uom)              e.uom              = 'Required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
