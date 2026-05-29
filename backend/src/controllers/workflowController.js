@@ -10,7 +10,7 @@ const MATTYPE_DEPT_MAP  = { 'ZMIS': 'Mechanical', 'ZEIS': 'Electrical' };
 const EDITABLE_FIELDS   = {
   'GST Team':      ['control_code'],
   'Purchase Team': ['purchase_group'],
-  'Store Head':    ['material_type', 'description', 'material_group'],
+  'Store Head':    ['material_type', 'description', 'material_group', 'uom', 'purchase_group'],
   'IT Team':       ['material_type', 'plant', 'storage_location', 'description', 'long_description', 'uom', 'purchase_group', 'material_group', 'control_code'],
 };
 

@@ -513,7 +513,7 @@ const MaterialRequestForm = () => {
               </div>
               <div className="col-span-4">
                 <SearchableDropdown
-                  label="Plant Head"
+                  label="Plant"
                   required
                   compact
                   value={formData.plant}

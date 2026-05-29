@@ -159,11 +159,13 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
   const ccValid = editData.control_code === '' || (editData.control_code.length >= 4 && editData.control_code.length <= 8);
 
   const isPurchase     = userRole==='Purchase Team';
-  const canEdit        = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team'||isPurchase;
+  const isStoreHead    = userRole==='Store Head';
+  const canEdit        = userRole==='GST Team'||isStoreHead||userRole==='IT Team'||isPurchase;
   const canEditHSN     = userRole==='GST Team'||userRole==='IT Team';
-  const canEditGrp     = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team';
-  const canEditMatType = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team';
-  const canEditPurchGrp= isPurchase||userRole==='IT Team';
+  const canEditGrp     = userRole==='GST Team'||isStoreHead||userRole==='IT Team';
+  const canEditMatType = userRole==='GST Team'||isStoreHead||userRole==='IT Team';
+  const canEditPurchGrp= isPurchase||isStoreHead||userRole==='IT Team';
+  const canEditUOM     = isStoreHead||userRole==='IT Team';
   const canSendBack    = userRole!=='GST Team';
   const isGST          = userRole==='GST Team';
   const isIT           = userRole==='IT Team';
@@ -444,6 +446,34 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                       />
                     </div>
                   </div>
+
+                  {/* Store Head extra fields — UOM + Purchase Group */}
+                  {(isStoreHead || isIT) && (
+                    <div className="grid grid-cols-12 gap-3 mt-3">
+                      <div className="col-span-4 space-y-1">
+                        <SearchableDropdown
+                          label="UOM"
+                          compact
+                          value={editData.uom}
+                          onChange={(val) => setField('uom', val)}
+                          fetchOptions={fetchUOM}
+                          style={editStyle('uom')}
+                          disabled={!canEditUOM}
+                        />
+                      </div>
+                      <div className="col-span-4 space-y-1">
+                        <SearchableDropdown
+                          label="Purchase Group"
+                          compact
+                          value={editData.purchase_group}
+                          onChange={(val) => setField('purchase_group', val)}
+                          fetchOptions={fetchPurchaseGroups}
+                          style={editStyle('purchase_group')}
+                          disabled={!canEditPurchGrp}
+                        />
+                      </div>
+                    </div>
+                  )}
                   )}
 
                   {(isIT || isGST) && (
