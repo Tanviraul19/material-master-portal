@@ -316,6 +316,7 @@ const MyRequests = () => {
   const [search, setSearch]       = useState('');
   const [editing, setEditing]     = useState(null);
   const [successId, setSuccessId] = useState(null);
+  const [historyReq, setHistoryReq] = useState(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -336,6 +337,7 @@ const MyRequests = () => {
 
   return (
     <div className="space-y-5 page-enter">
+      {historyReq && <HistoryModal req={historyReq} onClose={() => setHistoryReq(null)} />}
       {editing && <EditModal req={editing} onClose={() => setEditing(null)} onSuccess={handleResubmitSuccess} />}
 
       <div className="page-header">
