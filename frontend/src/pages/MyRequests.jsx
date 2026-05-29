@@ -430,7 +430,11 @@ const MyRequests = () => {
                       ) : isResubmitted ? (
                         <span className="flex items-center gap-1 text-emerald-600 text-[11px] font-semibold"><CheckCircle2 size={11}/> Resubmitted</span>
                       ) : (req.status === 'Approved' || req.status === 'Rejected') ? (
-                        <button onClick={() => setHistoryReq(req)} className="btn btn-secondary btn-sm flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setHistoryReq(req); }}
+                          style={{display:'inline-flex',alignItems:'center',gap:'4px',padding:'4px 10px',fontSize:'11px',fontWeight:700,color:'#4f46e5',background:'#eff6ff',border:'1px solid #c7d2fe',borderRadius:'8px',cursor:'pointer'}}
+                        >
                           <History size={12}/> Review Changes
                         </button>
                       ) : <span className="text-slate-200 text-[12px]">—</span>}
