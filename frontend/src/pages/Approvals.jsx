@@ -158,10 +158,12 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
 
   const ccValid = editData.control_code === '' || (editData.control_code.length >= 4 && editData.control_code.length <= 8);
 
-  const canEdit        = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team';
+  const isPurchase     = userRole==='Purchase Team';
+  const canEdit        = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team'||isPurchase;
   const canEditHSN     = userRole==='GST Team'||userRole==='IT Team';
   const canEditGrp     = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team';
   const canEditMatType = userRole==='GST Team'||userRole==='Store Head'||userRole==='IT Team';
+  const canEditPurchGrp= isPurchase||userRole==='IT Team';
   const canSendBack    = userRole!=='GST Team';
   const isGST          = userRole==='GST Team';
   const isIT           = userRole==='IT Team';
@@ -347,6 +349,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                     compact
                     value={editData.purchase_group}
                     onChange={(val) => setField('purchase_group', val)}
+                    disabled={!canEditPurchGrp}
                     fetchOptions={fetchPurchaseGroups}
                     className="col-span-1"
                     style={editStyle('purchase_group')}
