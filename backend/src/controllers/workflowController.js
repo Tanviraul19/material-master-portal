@@ -57,7 +57,7 @@ async function getApproverForRole(role) {
 
 // ── Email dispatcher (post-commit, fire-and-forget) ───────────────────────────
 // Runs AFTER transaction commits. Errors here never affect the HTTP response.
-async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, nextApproverRole, nextStatus, requestId, requesterId }) {
+async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, nextApproverRole, nextStatus, requestId, requesterId, fieldsChanged }) {
   try {
     const [[freshRequest], [requester]] = await Promise.all([
       db.query('SELECT * FROM material_requests WHERE id = ?', [requestId]),
@@ -428,7 +428,7 @@ exports.handleApproval = async (req, res) => {
     await t.commit();
 
     // ── Post-commit emails (fire-and-forget, never blocks response) ───────
-    dispatchWorkflowEmails({ action, actorRole: userRole, actorName, comments, nextApproverRole, nextStatus, requestId: id, requesterId: request.requester_id });
+    dispatchWorkflowEmails({ action, actorRole: userRole, actorName, comments, nextApproverRole, nextStatus, requestId: id, requesterId: request.requester_id, fieldsChanged });
 
     res.status(200).json({ message: 'Workflow processed', status: nextStatus, stage: currentStage, restarted: reroutedToDept });
   } catch (err) {

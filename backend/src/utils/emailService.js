@@ -247,7 +247,7 @@ exports.sendWorkflowStageEmail = async (approverEmail, approverRole, request) =>
 };
 
 // 4. Notify requester of action taken
-exports.sendWorkflowActionEmail = async (creatorEmail, request, action, actorRole, actorName, comments, newStatus) => {
+exports.sendWorkflowActionEmail = async (creatorEmail, request, action, actorRole, actorName, comments, newStatus, changedFields) => {
   const portalUrl = `${FRONTEND_URL}/requests/my?highlight=${request.id}`;
   console.log(`\n📧 [Email] WORKFLOW_ACTION (${action}) → ${creatorEmail}`);
 
@@ -268,6 +268,7 @@ exports.sendWorkflowActionEmail = async (creatorEmail, request, action, actorRol
           <tr><td style="padding:8px 0;font-size:13px;font-weight:700;color:#64748b;">Remarks</td><td style="padding:8px 0;font-size:13px;color:#475569;font-style:italic;">"${comments || 'No remarks.'}"</td></tr>
         </table>
         ${alertBox}
+        ${(changedFields && changedFields.length > 0) ? '<div style="margin:16px 0;padding:14px 18px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#0369a1;margin-bottom:8px;border-bottom:1px solid #bae6fd;padding-bottom:5px;">Fields Modified by ' + actorRole + '</div><table width=\"100%\">' + changedFields.map(f => '<tr><td style="padding:4px 0;font-size:12px;font-weight:700;color:#64748b;width:35%;">' + f.field.replace(/_/g,' ').toUpperCase() + '</td><td style="font-size:12px;color:#ef4444;text-decoration:line-through;">' + (f.old||'—') + '</td><td style="padding:0 6px;font-size:12px;color:#94a3b8;">→</td><td style="font-size:12px;color:#16a34a;font-weight:700;">' + (f.new||'—') + '</td></tr>').join('') + '</table></div>' : ''}
       </td></tr>
     </table>`;
 
