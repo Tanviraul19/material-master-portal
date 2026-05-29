@@ -544,7 +544,7 @@ const MaterialRequestForm = () => {
             {/* Side-by-Side Descriptions */}
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-5 space-y-1.5 pt-1">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Short Description</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Short Description <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input
                     name="description"
@@ -652,7 +652,8 @@ const MaterialRequestForm = () => {
             <div className="grid grid-cols-12 gap-6 items-end">
               <div className="col-span-7">
                 <SearchableDropdown
-                  label="Material Group *"
+                  label="Material Group"
+                  required
                   compact
                   value={formData.material_group}
                   onChange={handleMGChange}
@@ -682,7 +683,8 @@ const MaterialRequestForm = () => {
             <div className="grid grid-cols-12 gap-6 items-end">
               <div className="col-span-7">
                 <SearchableDropdown
-                  label="Purchasing Group *"
+                  label="Purchasing Group"
+                  required
                   compact
                   value={formData.purchase_group}
                   onChange={(code) => setField('purchase_group', code)}
