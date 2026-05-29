@@ -16,7 +16,10 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    // Auto sign out and redirect to login with original URL
+    // This handles the case where wrong role is logged in when clicking email links
+    localStorage.removeItem('user');
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
   }
 
   return <Outlet />;
