@@ -635,15 +635,16 @@ const MaterialRequestForm = () => {
               </div>
 
               <div className="col-span-7 space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Long Description</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Long Description <span className="text-red-500">*</span></label>
                 <textarea
                   name="long_description"
                   placeholder="Detailed technical parameters and additional notes..."
                   rows={2}
-                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-[13px] font-medium shadow-sm resize-none"
+                  className={`w-full px-4 py-2 bg-white border rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-[13px] font-medium shadow-sm resize-none ${errors.long_description ? 'border-red-500 bg-red-50/30' : 'border-slate-200'}`}
                   value={formData.long_description}
                   onChange={handleTextChange}
                 />
+                {errors.long_description && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase tracking-tight pl-1">{errors.long_description}</p>}
               </div>
             </div>
 
@@ -651,12 +652,13 @@ const MaterialRequestForm = () => {
             <div className="grid grid-cols-12 gap-6 items-end">
               <div className="col-span-7">
                 <SearchableDropdown
-                  label="Material Group"
+                  label="Material Group *"
                   compact
                   value={formData.material_group}
                   onChange={handleMGChange}
                   fetchOptions={fetchMaterialGroups}
                   placeholder="Search group"
+                  error={errors.material_group}
                 />
               </div>
               <div className="col-span-5">
@@ -680,12 +682,13 @@ const MaterialRequestForm = () => {
             <div className="grid grid-cols-12 gap-6 items-end">
               <div className="col-span-7">
                 <SearchableDropdown
-                  label="Purchasing Group"
+                  label="Purchasing Group *"
                   compact
                   value={formData.purchase_group}
                   onChange={(code) => setField('purchase_group', code)}
                   fetchOptions={fetchPurchaseGroups}
                   placeholder="Search purchasing group"
+                  error={errors.purchase_group}
                 />
               </div>
               <div className="col-span-5">
