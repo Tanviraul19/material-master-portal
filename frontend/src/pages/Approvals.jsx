@@ -474,7 +474,6 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                       </div>
                     </div>
                   )}
-                  )}
 
                   {(isIT || isGST) && (
                     <div className="grid grid-cols-12 gap-3 mt-3">
