@@ -412,10 +412,8 @@ const MyRequests = () => {
                             <p className="text-[10px] text-amber-600">{req.sendback_role||req.current_stage||'—'}</p>
                           </div>
                         </div>
-                      ) : req.status==='Approved' ? (
-                        <span className="flex items-center gap-1 text-emerald-600 text-[12px] font-semibold"><CheckCircle2 size={12}/> Approved</span>
-                      ) : req.status==='Rejected' ? (
-                        <span className="flex items-center gap-1 text-red-500 text-[12px] font-semibold"><XCircle size={12}/> Rejected</span>
+                      ) : req.status==='Approved' || req.status==='Rejected' ? (
+                        <span className="text-slate-300 text-[12px]">—</span>
                       ) : req.assigned_approver ? (
                         <div>
                           <p className="text-[12px] font-semibold text-slate-700 flex items-center gap-1"><User size={10} className="text-blue-500"/> {req.assigned_approver}</p>
