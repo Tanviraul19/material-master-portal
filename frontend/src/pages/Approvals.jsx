@@ -400,11 +400,26 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                     )}
                   </div>
 
+                  {/* Purchase Team — only Purchase Group editable */}
+                  {isPurchase ? (
+                    <div className="grid grid-cols-12 gap-3">
+                      <div className="col-span-6 space-y-1">
+                        <SearchableDropdown
+                          label="Purchase Group"
+                          compact
+                          value={editData.purchase_group}
+                          onChange={(val) => setField('purchase_group', val)}
+                          fetchOptions={fetchPurchaseGroups}
+                          style={editStyle('purchase_group')}
+                        />
+                      </div>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-12 gap-3">
                     <div className="col-span-3 space-y-1">
                       <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Material Type</label>
                       <select className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[12px] outline-none font-bold focus:ring-2 focus:ring-blue-100 transition-all shadow-sm" 
-                        value={editData.material_type} style={editStyle('material_type')} disabled={!canEditMatType || isPurchase}
+                        value={editData.material_type} style={editStyle('material_type')} disabled={!canEditMatType}
                         onChange={e => setEditData(p=>({...p,material_type:e.target.value}))}>
                         {['ZMIS','ZEIS','ZCOM','ZPAC','ZPRT','ZNVA','ZNVM'].map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
@@ -416,7 +431,6 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                       </div>
                       <input type="text" maxLength={40} className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[12px] outline-none font-bold focus:ring-2 focus:ring-blue-100 transition-all shadow-sm" 
                         value={editData.description} style={editStyle('description')}
-                        disabled={isPurchase}
                         onChange={e => setEditData(p=>({...p,description:e.target.value}))}/>
                     </div>
                     <div className="col-span-3 space-y-1">
@@ -427,10 +441,10 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                         onChange={(val) => setField('material_group', val)}
                         fetchOptions={fetchMaterialGroups}
                         style={editStyle('material_group')}
-                        disabled={isPurchase}
                       />
                     </div>
                   </div>
+                  )}
 
                   {(isIT || isGST) && (
                     <div className="grid grid-cols-12 gap-3 mt-3">
