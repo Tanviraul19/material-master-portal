@@ -446,6 +446,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                       />
                     </div>
                   </div>
+                  )}
 
                   {/* Store Head extra fields — UOM + Purchase Group */}
                   {(isStoreHead || isIT) && (
