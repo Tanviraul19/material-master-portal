@@ -384,57 +384,59 @@ const MyRequests = () => {
               const isResubmitted = successId === req.id;
               return (
                 <div key={req.id} className={isEditable ? 'border-l-4 border-amber-400' : ''}>
-                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-4 items-center">
-                    <div className="min-w-0">
+                  <div className="flex items-center justify-between px-5 py-4">
+                    {/* Left: Request Info */}
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-bold text-blue-600 text-[12px] font-mono">{req.req_number}</span>
                         {isEditable && <span className="badge badge-sentback">Action Required</span>}
                       </div>
-                      <p className="font-semibold text-slate-800 text-[13px] truncate max-w-[280px]">{req.description||req.material_name}</p>
+                      <p className="font-semibold text-slate-800 text-[13px] truncate max-w-[400px]">{req.description||req.material_name}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
                         {req.material_type} · {req.plant}{req.storage_location?` / ${req.storage_location}`:''}
                       </p>
                     </div>
 
-                    <div className="text-center">
-                      <span className={statusBadge(req.status)}>{req.status}</span>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {req.created_at ? new Date(req.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}
-                      </p>
-                    </div>
+                    {/* Right: Status + Action */}
+                    <div className="flex items-center gap-4 shrink-0">
+                      {/* Status Badge + Date */}
+                      <div className="text-center">
+                        <span className={statusBadge(req.status)}>{req.status}</span>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {req.created_at ? new Date(req.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}
+                        </p>
+                      </div>
 
-                    <div className="min-w-[140px]">
-                      {isEditable ? (
-                        <div className="flex items-start gap-1.5">
-                          <CornerUpLeft size={12} className="text-amber-500 shrink-0 mt-0.5"/>
+                      {/* Action */}
+                      <div className="min-w-[160px] text-right">
+                        {isEditable ? (
                           <div>
-                            <p className="text-[12px] font-semibold text-amber-800">{req.sendback_by||req.assigned_approver||'Approver'}</p>
-                            <p className="text-[10px] text-amber-600">{req.sendback_role||req.current_stage||'—'}</p>
+                            <p className="text-[12px] font-semibold text-amber-800 flex items-center justify-end gap-1">
+                              <CornerUpLeft size={12} className="text-amber-500"/>
+                              {req.sendback_by||req.assigned_approver||'Approver'}
+                            </p>
+                            <button onClick={() => setEditing(req)} className="btn btn-warning btn-sm mt-1">
+                              <Edit3 size={12}/> Edit & Resubmit
+                            </button>
                           </div>
-                        </div>
-                      ) : req.assigned_approver && req.status !== 'Approved' && req.status !== 'Rejected' ? (
-                        <div>
-                          <p className="text-[12px] font-semibold text-slate-700 flex items-center gap-1"><User size={10} className="text-blue-500"/> {req.assigned_approver}</p>
-                        </div>
-                      ) : <span className="text-slate-300 text-[12px]">—</span>}
-                    </div>
-
-                    <div>
-                      {isEditable ? (
-                        <button onClick={() => setEditing(req)} className="btn btn-warning btn-sm">
-                          <Edit3 size={12}/> Edit & Resubmit
-                        </button>
-                      ) : isResubmitted ? (
-                        <span className="flex items-center gap-1 text-emerald-600 text-[11px] font-semibold"><CheckCircle2 size={11}/> Resubmitted</span>
-                      ) : (req.status === 'Approved' || req.status === 'Rejected') ? (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setHistoryReq(req); }}
-                          style={{display:'inline-flex',alignItems:'center',gap:'4px',padding:'6px 12px',fontSize:'11px',fontWeight:700,color:'#4f46e5',background:'#eff6ff',border:'1px solid #c7d2fe',borderRadius:'8px',cursor:'pointer'}}
-                        >
-                          <History size={12}/> Review Changes
-                        </button>
-                      ) : <span className="text-slate-200 text-[12px]">—</span>}
+                        ) : isResubmitted ? (
+                          <span className="flex items-center justify-end gap-1 text-emerald-600 text-[11px] font-semibold">
+                            <CheckCircle2 size={11}/> Resubmitted
+                          </span>
+                        ) : (req.status === 'Approved' || req.status === 'Rejected') ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setHistoryReq(req); }}
+                            style={{display:'inline-flex',alignItems:'center',gap:'4px',padding:'6px 12px',fontSize:'11px',fontWeight:700,color:'#4f46e5',background:'#eff6ff',border:'1px solid #c7d2fe',borderRadius:'8px',cursor:'pointer'}}
+                          >
+                            <History size={12}/> Review Changes
+                          </button>
+                        ) : req.assigned_approver ? (
+                          <p className="text-[12px] font-semibold text-slate-600 flex items-center justify-end gap-1">
+                            <User size={11} className="text-blue-400"/> {req.assigned_approver}
+                          </p>
+                        ) : <span className="text-slate-200 text-[12px]">—</span>}
+                      </div>
                     </div>
                   </div>
 
