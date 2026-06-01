@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../services/api';
 import {
   Search, Clock, CheckCircle2, XCircle, User, RefreshCw,
@@ -157,9 +158,9 @@ const EditModal = ({ req, onClose, onSuccess }) => {
     finally { setSubmitting(false); }
   };
 
-  return (
-    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'flex-start',justifyContent:'center',backgroundColor:'rgba(0,0,0,0.4)',padding:'24px 16px',overflowY:'auto'}} onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 20px 40px rgba(0,0,0,0.15)',width:'100%',maxWidth:'680px',margin:'auto'}}>
+  return createPortal(
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,display:'flex',alignItems:'center',justifyContent:'center',backgroundColor:'rgba(0,0,0,0.45)',padding:'16px'}} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 20px 40px rgba(0,0,0,0.2)',width:'100%',maxWidth:'700px',maxHeight:'92vh',overflowY:'auto'}}>
         <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h2 className="font-bold text-slate-800 text-[15px]">Edit & Resubmit Request</h2>
@@ -171,7 +172,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
         </div>
 
         {/* Return reason */}
-        <div className="mx-6 mt-5 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+        <div className="mx-5 mt-3 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-100 border-b border-amber-200">
             <AlertTriangle size={13} className="text-amber-700 shrink-0" />
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
@@ -205,10 +206,10 @@ const EditModal = ({ req, onClose, onSuccess }) => {
 
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 pb-6 pt-5 space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">Edit Fields Below</p>
+        <form onSubmit={handleSubmit} className="px-5 pb-4 pt-3 space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1.5">Edit Fields Below</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Material Type *</label>
               <div className="relative">
@@ -223,7 +224,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <SearchableDropdown label="Plant" required value={form.plant} onChange={c => { set('plant',c); set('storage_location',''); }} fetchOptions={fetchPlants} placeholder="Search plant..." />
             <SearchableDropdown label="Storage Location" required value={form.storage_location} onChange={c => set('storage_location',c)} fetchOptions={fetchStorageLocs} placeholder={form.plant?'Search storage...':'Select plant first'} disabled={!form.plant} />
           </div>
@@ -241,15 +242,15 @@ const EditModal = ({ req, onClose, onSuccess }) => {
               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Long Description</label>
               <span className={`text-[10px] font-medium ${form.long_description.length>200?'text-red-500':'text-slate-400'}`}>{form.long_description.length}/200</span>
             </div>
-            <textarea rows={3} maxLength={200} className="input resize-none" value={form.long_description} onChange={e => set('long_description',e.target.value)} />
+            <textarea rows={2} maxLength={200} className="input resize-none" value={form.long_description} onChange={e => set('long_description',e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <SearchableDropdown label="Base UOM *" required value={form.uom} onChange={c => set('uom',c)} fetchOptions={fetchUOM} placeholder="Search UOM..." />
             <SearchableDropdown label="Purchasing Group *" required value={form.purchase_group} onChange={c => set('purchase_group',c)} fetchOptions={fetchPurchaseGroups} placeholder="Search group..." />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <SearchableDropdown label="Material Group" value={form.material_group} onChange={c => set('material_group',c)} fetchOptions={fetchMaterialGroups} placeholder="Search group..." />
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -309,7 +310,8 @@ const EditModal = ({ req, onClose, onSuccess }) => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

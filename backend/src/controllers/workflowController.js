@@ -9,7 +9,7 @@ const HAS_DEPT_APPROVER = ['Mechanical', 'Electrical'];
 const MATTYPE_DEPT_MAP  = { 'ZMIS': 'Mechanical', 'ZEIS': 'Electrical' };
 const EDITABLE_FIELDS   = {
   'GST Team':      ['control_code'],
-  'Purchase Team': ['purchase_group'],
+  'Purchase Team': ['purchase_group', 'uom'],
   'Store Head':    ['material_type', 'description', 'material_group', 'uom', 'purchase_group'],
   'IT Team':       ['material_type', 'plant', 'storage_location', 'description', 'long_description', 'uom', 'purchase_group', 'material_group', 'control_code'],
 };
@@ -330,12 +330,16 @@ exports.handleApproval = async (req, res) => {
     if (!reroutedToDept) {
       if (action === 'APPROVE') {
         if (userRole === 'Plant Head' || (userRole === 'Super Admin' && request.status === 'Pending Plant Head')) {
-          if (needsDeptApproval(request.department)) {
+          // Only ZMIS (Mechanical) and ZEIS (Electrical) go to dept team
+          // All other types (ZCOM, ZPAC, ZPRT etc.) skip dept → go directly to Purchase Team
+          const matType = request.material_type?.toUpperCase();
+          const needsDept = (matType === 'ZMIS' || matType === 'ZEIS') && needsDeptApproval(request.department);
+          if (needsDept) {
             nextStatus = 'Pending Department'; currentStage = 'Department'; nextApproverRole = getDeptRole(request.department);
             await notifyRoleUsers(t, nextApproverRole, id, 'APPROVAL_NEEDED', `${request.req_number} approved by Plant Head. Awaiting ${nextApproverRole}.`);
           } else {
             nextStatus = 'Pending Purchase'; currentStage = 'Purchase Team'; nextApproverRole = 'Purchase Team';
-            await notifyRoleUsers(t, 'Purchase Team', id, 'APPROVAL_NEEDED', `${request.req_number} approved by Plant Head. Forwarded to Purchase Team.`);
+            await notifyRoleUsers(t, 'Purchase Team', id, 'APPROVAL_NEEDED', `${request.req_number} approved by Plant Head. Forwarded directly to Purchase Team.`);
           }
         } else if (['Mechanical Team', 'Electrical Team'].includes(userRole)) {
           const resumeStage = request.resume_after_dept;

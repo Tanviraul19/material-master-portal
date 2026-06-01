@@ -165,7 +165,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
   const canEditGrp     = userRole==='GST Team'||isStoreHead||userRole==='IT Team';
   const canEditMatType = userRole==='GST Team'||isStoreHead||userRole==='IT Team';
   const canEditPurchGrp= isPurchase||isStoreHead||userRole==='IT Team';
-  const canEditUOM     = isStoreHead||userRole==='IT Team';
+  const canEditUOM     = isStoreHead||userRole==='IT Team'||isPurchase;
   const canSendBack    = userRole!=='GST Team';
   const isGST          = userRole==='GST Team';
   const isIT           = userRole==='IT Team';
@@ -413,6 +413,16 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                           onChange={(val) => setField('purchase_group', val)}
                           fetchOptions={fetchPurchaseGroups}
                           style={editStyle('purchase_group')}
+                        />
+                      </div>
+                      <div className="col-span-6 space-y-1">
+                        <SearchableDropdown
+                          label="UOM"
+                          compact
+                          value={editData.uom}
+                          onChange={(val) => setField('uom', val)}
+                          fetchOptions={fetchUOM}
+                          style={editStyle('uom')}
                         />
                       </div>
                     </div>
