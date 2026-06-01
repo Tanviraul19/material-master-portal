@@ -158,9 +158,9 @@ const EditModal = ({ req, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
-      <div className="modal-panel max-w-2xl" style={{maxHeight:'90vh',overflowY:'auto',display:'flex',flexDirection:'column'}}>
-        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100" style={{flexShrink:0}}>
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'flex-start',justifyContent:'center',backgroundColor:'rgba(0,0,0,0.4)',padding:'24px 16px',overflowY:'auto'}} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 20px 40px rgba(0,0,0,0.15)',width:'100%',maxWidth:'680px',margin:'auto'}}>
+        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h2 className="font-bold text-slate-800 text-[15px]">Edit & Resubmit Request</h2>
             <p className="text-slate-400 text-[11px] mt-0.5 font-mono">{req.req_number}</p>
@@ -192,13 +192,13 @@ const EditModal = ({ req, onClose, onSuccess }) => {
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1.5 flex items-center gap-1">
-                <MessageSquare size={9}/> Required Changes
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-1.5 flex items-center gap-1">
+                <MessageSquare size={10}/> Reason / Required Changes
               </p>
-              <div className="bg-white border border-amber-200 rounded-lg px-3 py-2 min-h-[40px]">
+              <div className="bg-white border border-amber-300 rounded-lg px-3 py-2.5 min-h-[45px]">
                 {req.sendback_reason?.trim()
-                  ? <p className="text-[13px] text-slate-700 italic leading-relaxed">"{req.sendback_reason}"</p>
-                  : <p className="text-[12px] text-slate-400 italic">No specific reason provided.</p>}
+                  ? <p className="text-[13px] font-semibold text-slate-800 leading-relaxed">{req.sendback_reason}</p>
+                  : <p className="text-[12px] text-slate-400 italic">No specific reason provided by approver.</p>}
               </div>
             </div>
           </div>
