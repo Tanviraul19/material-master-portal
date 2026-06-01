@@ -14,47 +14,49 @@ const { normalizeDescription, similarityScore, DUPLICATE_THRESHOLD } = require('
 // ─────────────────────────────────────────────
 exports.suggestDescriptions = async (req, res) => {
   const { q } = req.query;
-  if (!q || q.trim().length < 3) return res.json({ suggestions: [], total: 0 });
+  if (!q || q.trim().length < 2) return res.json({ suggestions: [], total: 0 });
 
   try {
-    const term = `%${q.trim()}%`;
+    // Split into words — ALL words must appear (any order)
+    // "laptop lenovo" → finds "LENOVO LAPTOP CHARGER" ✅
+    const words = q.trim().split(/\s+/).filter(Boolean);
+    const binds = words.map(w => `%${w}%`);
 
+    let fromMaster = [], fromRequests = [], totalMaster = 0, totalReq = 0;
 
-    // Search material_descriptions (Excel master)
-    const masterQuery = isPostgres
-      ? `SELECT original_description, source, material_type, material_code
-         FROM material_descriptions WHERE original_description ILIKE $1
-         ORDER BY char_length(original_description) ASC LIMIT 15`
-      : `SELECT original_description, source, material_type, material_code
-         FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)
-         ORDER BY length(original_description) ASC LIMIT 15`;
-    const fromMaster = isPostgres
-      ? await (async () => { const [r] = await sequelize.query(masterQuery, { bind: [term] }); return r; })()
-      : await db.query(masterQuery, [term]);
+    if (isPostgres) {
+      const masterCond = words.map((_, i) => `original_description ILIKE $${i+1}`).join(' AND ');
+      const reqCond    = words.map((_, i) => `description ILIKE $${i+1}`).join(' AND ');
 
-    // Search material_requests (submitted requests)
-    const reqQuery = isPostgres
-      ? `SELECT description as original_description, 'request' as source, material_type, req_number as material_code
-         FROM material_requests WHERE description ILIKE $1 AND description IS NOT NULL
-         ORDER BY created_at DESC LIMIT 10`
-      : `SELECT description as original_description, 'request' as source, material_type, req_number as material_code
-         FROM material_requests WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL
-         ORDER BY created_at DESC LIMIT 10`;
-    const fromRequests = isPostgres
-      ? await (async () => { const [r] = await sequelize.query(reqQuery, { bind: [term] }); return r; })()
-      : await db.query(reqQuery, [term]);
+      const [mRows] = await sequelize.query(
+        `SELECT original_description, source, material_type, material_code FROM material_descriptions WHERE ${masterCond} ORDER BY char_length(original_description) ASC LIMIT 20`,
+        { bind: binds }
+      );
+      fromMaster = mRows;
 
-    // Count total matches
-    const masterCountRows = isPostgres
-      ? await (async () => { const [r] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE original_description ILIKE $1`, { bind: [term] }); return r; })()
-      : await db.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE LOWER(original_description) LIKE LOWER(?)`, [term]);
-    const [masterCount] = masterCountRows;
+      const [rRows] = await sequelize.query(
+        `SELECT description as original_description, 'request' as source, material_type, req_number as material_code FROM material_requests WHERE ${reqCond} AND description IS NOT NULL ORDER BY created_at DESC LIMIT 10`,
+        { bind: binds }
+      );
+      fromRequests = rRows;
 
-    const reqCountRows = isPostgres
-      ? await (async () => { const [r] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE description ILIKE $1 AND description IS NOT NULL`, { bind: [term] }); return r; })()
-      : await db.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE LOWER(description) LIKE LOWER(?) AND description IS NOT NULL`, [term]);
-    const [reqCount] = reqCountRows;
+      const [mCnt] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE ${masterCond}`, { bind: binds });
+      totalMaster = parseInt(mCnt[0]?.cnt || 0);
 
+      const [rCnt] = await sequelize.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE ${reqCond} AND description IS NOT NULL`, { bind: binds });
+      totalReq = parseInt(rCnt[0]?.cnt || 0);
+    } else {
+      const masterCond = words.map(() => 'LOWER(original_description) LIKE LOWER(?)').join(' AND ');
+      const reqCond    = words.map(() => 'LOWER(description) LIKE LOWER(?)').join(' AND ');
+
+      fromMaster   = await db.query(`SELECT original_description, source, material_type, material_code FROM material_descriptions WHERE ${masterCond} ORDER BY length(original_description) ASC LIMIT 20`, binds);
+      fromRequests = await db.query(`SELECT description as original_description, 'request' as source, material_type, req_number as material_code FROM material_requests WHERE ${reqCond} AND description IS NOT NULL ORDER BY created_at DESC LIMIT 10`, binds);
+
+      const mCnt = await db.query(`SELECT COUNT(*) as cnt FROM material_descriptions WHERE ${masterCond}`, binds);
+      totalMaster = parseInt(mCnt[0]?.cnt || 0);
+      const rCnt = await db.query(`SELECT COUNT(*) as cnt FROM material_requests WHERE ${reqCond} AND description IS NOT NULL`, binds);
+      totalReq = parseInt(rCnt[0]?.cnt || 0);
+    }
 
     const suggestions = [
       ...fromMaster.map(r => ({
@@ -71,11 +73,7 @@ exports.suggestDescriptions = async (req, res) => {
       })),
     ].slice(0, 20);
 
-
-    res.json({
-      suggestions,
-      total: (masterCount?.cnt || 0) + (reqCount?.cnt || 0),
-    });
+    res.json({ suggestions, total: totalMaster + totalReq });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
