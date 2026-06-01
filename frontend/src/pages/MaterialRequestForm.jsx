@@ -556,7 +556,7 @@ const MaterialRequestForm = () => {
                 
                 {/* Suggestions List */}
                 <AnimatePresence>
-                  {suggestions.list.length > 0 && formData.description.trim().length >= 2 && (
+                  {suggestions.list.length > 0 && formData.description.trim().length >= 2 && !isDuplicateBlocked && (
                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                       className="absolute left-0 right-0 mt-1 z-[9999] rounded-xl border border-blue-200 bg-white shadow-2xl overflow-hidden backdrop-blur-sm">
                       <div className="flex items-center justify-between px-3 py-1.5 bg-blue-50 border-b border-blue-100">
