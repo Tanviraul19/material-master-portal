@@ -39,7 +39,7 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { name: 'Settings', path: '/settings', icon: Settings, roles: ['IT Team', 'Super Admin', 'Admin', 'User', 'Plant Head', 'Mechanical Team', 'Electrical Team', 'Purchase Team', 'GST Team', 'Store Head', 'Department'] },
+      { name: 'Settings', path: '/settings', icon: Settings, roles: ['IT Team', 'Super Admin', 'Admin'] },
     ],
   },
 ];

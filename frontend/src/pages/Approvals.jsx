@@ -578,6 +578,11 @@ const Approvals = () => {
     catch { setQueue([]); } finally { setLoading(false); }
   }, []);
   useEffect(() => { fetchQueue(); }, [fetchQueue]);
+  // Auto-refresh after 1 second to ensure auth token is ready
+  useEffect(() => {
+    const t = setTimeout(() => fetchQueue(), 1000);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleExport = async () => {
     try {
@@ -726,8 +731,11 @@ const Approvals = () => {
                     <tr><td colSpan="8">
                       <div className="empty-state">
                         <div className="empty-icon"><CheckCircle2 size={20} className="text-emerald-500"/></div>
-                        <p className="text-[14px] font-semibold text-slate-500 mt-1">Queue is empty</p>
-                        <p className="text-[12px] text-slate-400">All caught up — no pending approvals</p>
+                        <p className="text-[14px] font-semibold text-slate-500 mt-1">No pending approvals</p>
+                        <p className="text-[12px] text-slate-400">All requests for your role are up to date</p>
+                        <button onClick={fetchQueue} className="btn btn-secondary btn-sm mt-3">
+                          <RefreshCw size={12}/> Refresh
+                        </button>
                       </div>
                     </td></tr>
                   ) : queue.map(req => (
