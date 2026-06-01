@@ -574,15 +574,24 @@ const Approvals = () => {
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get('/workflow/pending'); setQueue(Array.isArray(r.data)?r.data:[]); }
+    try {
+      const r = await api.get('/workflow/pending');
+      const data = Array.isArray(r.data) ? r.data : [];
+      setQueue(data);
+      // If empty on first load, retry once after 2 seconds (handles Render spin-up delay)
+      if (data.length === 0) {
+        setTimeout(async () => {
+          try {
+            const r2 = await api.get('/workflow/pending');
+            const d2 = Array.isArray(r2.data) ? r2.data : [];
+            if (d2.length > 0) setQueue(d2);
+          } catch { /* ignore */ }
+        }, 2000);
+      }
+    }
     catch { setQueue([]); } finally { setLoading(false); }
   }, []);
   useEffect(() => { fetchQueue(); }, [fetchQueue]);
-  // Auto-refresh after 1 second to ensure auth token is ready
-  useEffect(() => {
-    const t = setTimeout(() => fetchQueue(), 1000);
-    return () => clearTimeout(t);
-  }, []);
 
   const handleExport = async () => {
     try {
