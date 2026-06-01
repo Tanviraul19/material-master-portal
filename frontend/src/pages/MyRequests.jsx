@@ -415,7 +415,6 @@ const MyRequests = () => {
                       ) : req.assigned_approver && req.status !== 'Approved' && req.status !== 'Rejected' ? (
                         <div>
                           <p className="text-[12px] font-semibold text-slate-700 flex items-center gap-1"><User size={10} className="text-blue-500"/> {req.assigned_approver}</p>
-                          <p className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5"><Clock size={9} className="animate-pulse"/> {req.current_stage}</p>
                         </div>
                       ) : <span className="text-slate-300 text-[12px]">—</span>}
                     </div>
