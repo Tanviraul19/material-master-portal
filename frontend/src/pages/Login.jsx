@@ -450,14 +450,30 @@ const Login = () => {
   const { login } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
-  const redirectTo = location.state?.from || '/';
+  // Prevent redirect loop — if 'from' is /login, go to home instead
+  const rawRedirect = location.state?.from || '/';
+  const redirectTo = (rawRedirect === '/login' || rawRedirect === '/unauthorized') ? '/' : rawRedirect;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setLoading(true);
-    try { await login(email, password); navigate(redirectTo, { replace: true }); }
-    catch (err) { setError(err.response?.data?.message || 'Invalid credentials. Please try again.'); }
-    finally { setLoading(false); }
+    try {
+      await login(email, password);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      // Network error — no response from server
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.');
+      } else if (err.response?.status === 404) {
+        setError('User not found or account disabled.');
+      } else if (err.response?.status === 401) {
+        setError('Invalid password. Please try again.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const [fpOpen, setFpOpen] = useState(false);
