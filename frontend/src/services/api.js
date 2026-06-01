@@ -56,7 +56,9 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    // Only auto-logout on 401 (token expired/invalid)
+    // 403 (wrong role) is handled by ProtectedRoute — do NOT clear user here
+    if (error.response && error.response.status === 401) {
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem('user');
         window.location.href = '/login';
