@@ -164,8 +164,16 @@ exports.resubmitRequest = async (req, res) => {
 
     // If user changed material_type on resubmit, update department accordingly
     const newMaterialType = material_type || request.material_type;
-    const MATTYPE_DEPT_MAP = { 'ZMIS': 'Mechanical', 'ZEIS': 'Electrical' };
-    const newDepartment = MATTYPE_DEPT_MAP[newMaterialType?.toUpperCase()] || request.department;
+    // Full mapping - always update department based on new material type
+    const FULL_MATTYPE_DEPT = {
+      'ZMIS': 'Mechanical', 'ZEIS': 'Electrical',
+      'ZCOM': 'Consumable', 'ZPAC': '-', 'ZPRT': 'Production',
+      'ZNVA': '-', 'ZNVM': '-', 'ZRET': '-',
+    };
+    // Use new material type's department, NOT the old one
+    const newDepartment = FULL_MATTYPE_DEPT[newMaterialType?.toUpperCase()] !== undefined
+      ? FULL_MATTYPE_DEPT[newMaterialType?.toUpperCase()]
+      : request.department;
 
     // Update department on request if material_type changed
     if (newMaterialType !== request.material_type || newDepartment !== request.department) {

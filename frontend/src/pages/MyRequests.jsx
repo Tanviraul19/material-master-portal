@@ -160,7 +160,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
 
   return createPortal(
     <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,display:'flex',alignItems:'center',justifyContent:'center',backgroundColor:'rgba(0,0,0,0.45)',padding:'16px'}} onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 20px 40px rgba(0,0,0,0.2)',width:'100%',maxWidth:'700px',maxHeight:'92vh',overflowY:'auto'}}>
+      <div style={{background:'#fff',borderRadius:'16px',boxShadow:'0 20px 40px rgba(0,0,0,0.2)',width:'100%',maxWidth:'700px'}}>
         <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h2 className="font-bold text-slate-800 text-[15px]">Edit & Resubmit Request</h2>
@@ -172,14 +172,14 @@ const EditModal = ({ req, onClose, onSuccess }) => {
         </div>
 
         {/* Return reason */}
-        <div className="mx-5 mt-3 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+        <div className="mx-5 mt-2 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-100 border-b border-amber-200">
             <AlertTriangle size={13} className="text-amber-700 shrink-0" />
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
               {isITSendback ? 'Returned by IT Team — Corrections Required' : 'Returned for Changes'}
             </span>
           </div>
-          <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="px-4 py-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1.5">Returned By</p>
               <div className="flex items-center gap-2.5">
@@ -206,7 +206,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
 
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 pb-4 pt-3 space-y-3">
+        <form onSubmit={handleSubmit} className="px-5 pb-4 pt-2 space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1.5">Edit Fields Below</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -242,7 +242,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Long Description</label>
               <span className={`text-[10px] font-medium ${form.long_description.length>200?'text-red-500':'text-slate-400'}`}>{form.long_description.length}/200</span>
             </div>
-            <textarea rows={2} maxLength={200} className="input resize-none" value={form.long_description} onChange={e => set('long_description',e.target.value)} />
+            <textarea rows={1} maxLength={200} className="input resize-none" value={form.long_description} onChange={e => set('long_description',e.target.value)} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
