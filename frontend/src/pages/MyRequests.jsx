@@ -384,7 +384,7 @@ const MyRequests = () => {
               const isResubmitted = successId === req.id;
               return (
                 <div key={req.id} className={isEditable ? 'border-l-4 border-amber-400' : ''}>
-                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-4 items-center">
+                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-4 items-center">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-bold text-blue-600 text-[12px] font-mono">{req.req_number}</span>
@@ -403,7 +403,7 @@ const MyRequests = () => {
                       </p>
                     </div>
 
-                    <div className="min-w-[120px]">
+                    <div className="min-w-[140px]">
                       {isEditable ? (
                         <div className="flex items-start gap-1.5">
                           <CornerUpLeft size={12} className="text-amber-500 shrink-0 mt-0.5"/>
@@ -412,9 +412,7 @@ const MyRequests = () => {
                             <p className="text-[10px] text-amber-600">{req.sendback_role||req.current_stage||'—'}</p>
                           </div>
                         </div>
-                      ) : req.status==='Approved' || req.status==='Rejected' ? (
-                        <span className="text-slate-300 text-[12px]">—</span>
-                      ) : req.assigned_approver ? (
+                      ) : req.assigned_approver && req.status !== 'Approved' && req.status !== 'Rejected' ? (
                         <div>
                           <p className="text-[12px] font-semibold text-slate-700 flex items-center gap-1"><User size={10} className="text-blue-500"/> {req.assigned_approver}</p>
                           <p className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5"><Clock size={9} className="animate-pulse"/> {req.current_stage}</p>
@@ -433,7 +431,7 @@ const MyRequests = () => {
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setHistoryReq(req); }}
-                          style={{display:'inline-flex',alignItems:'center',gap:'4px',padding:'4px 10px',fontSize:'11px',fontWeight:700,color:'#4f46e5',background:'#eff6ff',border:'1px solid #c7d2fe',borderRadius:'8px',cursor:'pointer'}}
+                          style={{display:'inline-flex',alignItems:'center',gap:'4px',padding:'6px 12px',fontSize:'11px',fontWeight:700,color:'#4f46e5',background:'#eff6ff',border:'1px solid #c7d2fe',borderRadius:'8px',cursor:'pointer'}}
                         >
                           <History size={12}/> Review Changes
                         </button>
