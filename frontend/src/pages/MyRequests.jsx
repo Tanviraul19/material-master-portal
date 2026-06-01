@@ -350,7 +350,7 @@ const MyRequests = () => {
       {historyReq && <HistoryModal req={historyReq} onClose={() => setHistoryReq(null)} />}
       {editing && <EditModal req={editing} onClose={() => setEditing(null)} onSuccess={handleResubmitSuccess} />}
 
-      <div className="page-header">
+      <div className="page-header" style={{paddingLeft:'1.5rem'}}>
         <div>
           <h1 className="page-title">My Requests</h1>
           <p className="page-sub">Track your submitted material master requests</p>
