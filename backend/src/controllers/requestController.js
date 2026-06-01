@@ -162,10 +162,39 @@ exports.resubmitRequest = async (req, res) => {
     }
     if (!sbStage) { await t.rollback(); return res.status(400).json({ error: 'No sendback stage recorded.' }); }
 
+    // If user changed material_type on resubmit, update department accordingly
+    const newMaterialType = material_type || request.material_type;
+    const MATTYPE_DEPT_MAP = { 'ZMIS': 'Mechanical', 'ZEIS': 'Electrical' };
+    const newDepartment = MATTYPE_DEPT_MAP[newMaterialType?.toUpperCase()] || request.department;
+
+    // Update department on request if material_type changed
+    if (newMaterialType !== request.material_type || newDepartment !== request.department) {
+      await sequelize.query(
+        `UPDATE material_requests SET department = ?, material_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        { replacements: [newDepartment, newMaterialType, id], transaction: t }
+      );
+    }
+
     const DEPT_ROLE_MAP = { 'Mechanical': 'Mechanical Team', 'Electrical': 'Electrical Team' };
+
+    // If sent back from Dept stage, route to correct dept team based on NEW material type
+    // e.g. user changed ZMIS→ZCOM (Consumable) → skip dept → go to Purchase Team
+    // e.g. user changed ZMIS→ZEIS (Electrical) → go to Electrical Team (Pradeep Sir)
+    let resolvedStage = sbStage;
+    if (sbStage === 'Department' || sbStage === 'Mechanical Team' || sbStage === 'Electrical Team') {
+      const newDeptRole = DEPT_ROLE_MAP[newDepartment];
+      if (!newDeptRole) {
+        // New material type has no dept approver (e.g. ZCOM) — skip dept, go to Purchase
+        resolvedStage = 'Purchase Team';
+      } else {
+        // Route to correct dept team based on new material type
+        resolvedStage = newDeptRole;
+      }
+    }
+
     const stageToStatus = {
       'Plant Head':      { status: 'Pending Plant Head',        role: 'Plant Head' },
-      'Department':      { status: 'Pending Department',        role: DEPT_ROLE_MAP[request.department] || null },
+      'Department':      { status: 'Pending Department',        role: DEPT_ROLE_MAP[newDepartment] || 'Purchase Team' },
       'Purchase Team':   { status: 'Pending Purchase',          role: 'Purchase Team' },
       'GST Team':        { status: 'Pending GST',               role: 'GST Team' },
       'Store Head':      { status: 'Pending Store Head',        role: 'Store Head' },
@@ -173,11 +202,11 @@ exports.resubmitRequest = async (req, res) => {
       'Mechanical Team': { status: 'Pending Department',        role: 'Mechanical Team' },
       'Electrical Team': { status: 'Pending Department',        role: 'Electrical Team' },
     };
-    const mapping = stageToStatus[sbStage];
-    if (!mapping) { await t.rollback(); return res.status(400).json({ error: `Unknown sendback stage: ${sbStage}` }); }
+    const mapping = stageToStatus[resolvedStage];
+    if (!mapping) { await t.rollback(); return res.status(400).json({ error: `Unknown sendback stage: ${resolvedStage}` }); }
 
     const nextStatus       = mapping.status;
-    const nextStage        = sbStage;
+    const nextStage        = resolvedStage;
     const nextApproverRole = mapping.role;
 
     const [approverUser] = await db.query(

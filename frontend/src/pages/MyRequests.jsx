@@ -159,8 +159,8 @@ const EditModal = ({ req, onClose, onSuccess }) => {
 
   return (
     <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
-      <div className="modal-panel max-w-2xl">
-        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
+      <div className="modal-panel max-w-2xl" style={{maxHeight:'90vh',overflowY:'auto',display:'flex',flexDirection:'column'}}>
+        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100" style={{flexShrink:0}}>
           <div>
             <h2 className="font-bold text-slate-800 text-[15px]">Edit & Resubmit Request</h2>
             <p className="text-slate-400 text-[11px] mt-0.5 font-mono">{req.req_number}</p>
@@ -202,13 +202,7 @@ const EditModal = ({ req, onClose, onSuccess }) => {
               </div>
             </div>
           </div>
-          <div className="px-4 py-2 bg-amber-50 border-t border-amber-100">
-            <p className="text-[11px] text-amber-700">
-              {isITSendback
-                ? '✓ After resubmit, request returns directly to IT Team. Previous approvals preserved.'
-                : '✓ After resubmit, request restarts from Plant Head for full re-approval.'}
-            </p>
-          </div>
+
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 pb-6 pt-5 space-y-4">

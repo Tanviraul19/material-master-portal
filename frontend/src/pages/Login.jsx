@@ -461,13 +461,15 @@ const Login = () => {
       await login(email, password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      // Network error — no response from server
-      if (!err.response) {
-        setError('Network error — please check your internet connection and try again.');
+      // Network error — server unreachable
+      if (!err.response || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        setError('⚠️ Network error — please check your internet connection and try again.');
       } else if (err.response?.status === 404) {
         setError('User not found or account disabled.');
       } else if (err.response?.status === 401) {
         setError('Invalid password. Please try again.');
+      } else if (err.response?.status === 500) {
+        setError('Server error — please try again after some time.');
       } else {
         setError(err.response?.data?.message || 'Login failed. Please try again.');
       }
