@@ -8,7 +8,7 @@ const VALUATION_MAPPING = {
   'ZEIS': { department: 'Electrical', category: 'E', class: 'ZEID' },
   'ZCOM': { department: 'Consumable', category: 'C', class: 'ZCOD' },
   'ZPAC': { department: '-',          category: '-', class: 'ZPAC' },
-  'ZPRT': { department: 'Production', category: 'T', class: 'ZPRP' },
+  'ZPRT': { department: 'Production', category: 'T', class: 'ZPRD' },
 };
 
 // ── POST /requests ────────────────────────────────────────────────────────────

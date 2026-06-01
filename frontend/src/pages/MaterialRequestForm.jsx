@@ -13,14 +13,14 @@ import virajLogo from '../assets/viraj-logo.png';
 
 // ── Valuation mapping (unchanged) ──────────────────────────────────────────
 const VALUATION_MAPPING = {
-  'ZMIS': { department: 'Mechanical', category: 'M', class: '2MID' },
+  'ZMIS': { department: 'Mechanical', category: 'M', class: 'ZMID' },
   'ZEIS': { department: 'Electrical', category: 'E', class: 'ZEID' },
   'ZCOM': { department: 'Consumable', category: 'C', class: 'ZCOD' },
   'ZPAC': { department: '-', category: '-', class: 'ZPAC' },
   'ZNVA': { department: '-', category: '-', class: 'ZNVA' },
   'ZNVM': { department: '-', category: '-', class: 'ZNVM' },
   'ZRET': { department: '-', category: '-', class: 'ZRET' },
-  'ZPRT': { department: 'Production', category: 'T', class: 'ZPRP' },
+  'ZPRT': { department: 'Production', category: 'T', class: 'ZPRD' },
 };
 
 // ── Read-only description box ───────────────────────────────────────────────
@@ -292,7 +292,7 @@ const MaterialRequestForm = () => {
 
   // Suggestion list (debounced 300ms) — substring search, view-only
   useEffect(() => {
-    if (!formData.description || formData.description.length < 4) {
+    if (!formData.description || formData.description.length < 2) {
       setSuggestions({ list: [], total: 0 }); return;
     }
     const t = setTimeout(async () => {
@@ -385,9 +385,7 @@ const MaterialRequestForm = () => {
     setField('material_group', code);
     setMgShortDesc(item?.description || '');
     // Auto-fill long description from material group long desc
-    if (item?.description && !formData.long_description) {
-      setField('long_description', item.description.slice(0, 200));
-    }
+    // Long description NOT autofilled — user fills it manually
   };
 
   // HSN: allow only digits, max 8
@@ -418,7 +416,6 @@ const MaterialRequestForm = () => {
     if (!formData.storage_location) e.storage_location = 'Required';
     if (!formData.description)      e.description      = 'Required';
     if (formData.description.length > 40) e.description = 'Max 40 characters';
-    if (!formData.long_description) e.long_description = 'Required';
     if (formData.long_description.length > 200) e.long_description = 'Max 200 characters';
     if (!formData.material_group)   e.material_group   = 'Required';
     if (!formData.purchase_group)   e.purchase_group   = 'Required';
@@ -635,7 +632,7 @@ const MaterialRequestForm = () => {
               </div>
 
               <div className="col-span-7 space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Long Description <span className="text-red-500">*</span></label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Long Description <span className="text-slate-400 text-[9px] normal-case font-normal">(optional)</span></label>
                 <textarea
                   name="long_description"
                   placeholder="Detailed technical parameters and additional notes..."
