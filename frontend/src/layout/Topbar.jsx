@@ -30,21 +30,8 @@ const Topbar = () => {
         borderBottom: '1px solid #e2e8f0', // Subtle border
       }}
     >
-      {/* Search */}
-      <div className="flex-1 max-w-sm">
-        <div className="relative group">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500"
-            size={14}
-            style={{ color: '#94a3b8' }}
-          />
-          <input
-            type="text"
-            placeholder="Search requests, materials..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-10 py-1.5 text-[13px] text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all placeholder:text-slate-400 font-medium"
-          />
-        </div>
-      </div>
+      {/* Search removed — search is available on each page */}
+      <div className="flex-1"></div>
 
       {/* Right actions */}
       <div className="flex items-center gap-4 ml-auto">

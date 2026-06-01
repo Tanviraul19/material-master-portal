@@ -111,6 +111,16 @@ const statusBadge = (s) => {
   return 'badge badge-default';
 };
 
+// Simplify status text for display
+const simplifyStatus = (s) => {
+  if (!s) return '—';
+  if (s === 'Approved') return 'APPROVED';
+  if (s === 'Rejected') return 'REJECTED';
+  if (s.includes('Sent Back')) return 'SENT BACK';
+  if (s.includes('Pending')) return 'PENDING';
+  return s.toUpperCase();
+};
+
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : null;
 
@@ -401,7 +411,7 @@ const MyRequests = () => {
                     <div className="flex items-center gap-4 shrink-0">
                       {/* Status Badge + Date */}
                       <div className="text-center">
-                        <span className={statusBadge(req.status)}>{req.status}</span>
+                        <span className={statusBadge(req.status)}>{simplifyStatus(req.status)}</span>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {req.created_at ? new Date(req.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}
                         </p>
