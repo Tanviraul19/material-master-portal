@@ -296,6 +296,7 @@ exports.sendFinalApprovalEmail = async (creatorEmail, request) => {
           <tr><td style="padding:8px 0;font-size:13px;font-weight:700;color:#166534;width:40%;">Request Number</td><td style="padding:8px 0;font-size:13px;font-family:monospace;font-weight:800;color:#14532d;">${request.req_number}</td></tr>
           <tr><td style="padding:8px 0;font-size:13px;font-weight:700;color:#166534;">Description</td><td style="padding:8px 0;font-size:13px;color:#14532d;">${request.description || '—'}</td></tr>
           <tr><td style="padding:8px 0;font-size:13px;font-weight:700;color:#166534;">Status</td><td style="padding:8px 0;font-size:13px;font-weight:800;color:#10b981;">&#10003; Completed</td></tr>
+          ${request.material_code ? `<tr><td style="padding:8px 0;font-size:13px;font-weight:700;color:#166534;">SAP Material Code</td><td style="padding:8px 0;font-size:16px;font-family:monospace;font-weight:900;color:#1e40af;letter-spacing:1px;">${request.material_code}</td></tr>` : ''}
         </table>
       </td></tr>
     </table>`;

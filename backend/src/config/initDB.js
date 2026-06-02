@@ -9,7 +9,7 @@ const initDB = async () => {
         if (isPostgres) {
             // ── PostgreSQL Tables ─────────────────────────────────────────
             await sequelize.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, full_name TEXT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, department TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_login TIMESTAMP)`);
-            await sequelize.query(`CREATE TABLE IF NOT EXISTS material_requests (id SERIAL PRIMARY KEY, req_number TEXT UNIQUE, requester_id INTEGER, material_name TEXT, material_type TEXT, plant TEXT, storage_location TEXT, description TEXT, long_description TEXT, uom TEXT, purchase_group TEXT, material_group TEXT, control_code TEXT, valuation_category TEXT, valuation_class TEXT, department TEXT, status TEXT DEFAULT 'Pending Plant Head', current_stage TEXT DEFAULT 'Plant Head', priority TEXT DEFAULT 'Medium', it_sendback_to_user INTEGER DEFAULT 0, assigned_approver TEXT, pending_since TIMESTAMP, sendback_stage TEXT, sendback_role TEXT, resume_after_dept TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+            await sequelize.query(`CREATE TABLE IF NOT EXISTS material_requests (id SERIAL PRIMARY KEY, req_number TEXT UNIQUE, requester_id INTEGER, material_name TEXT, material_type TEXT, plant TEXT, storage_location TEXT, description TEXT, long_description TEXT, uom TEXT, purchase_group TEXT, material_group TEXT, control_code TEXT, valuation_category TEXT, valuation_class TEXT, department TEXT, status TEXT DEFAULT 'Pending Plant Head', current_stage TEXT DEFAULT 'Plant Head', priority TEXT DEFAULT 'Medium', it_sendback_to_user INTEGER DEFAULT 0, assigned_approver TEXT, pending_since TIMESTAMP, sendback_stage TEXT, sendback_role TEXT, resume_after_dept TEXT, material_code TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS approval_logs (id SERIAL PRIMARY KEY, request_id INTEGER, approver_id INTEGER, action TEXT, comments TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_plants (id SERIAL PRIMARY KEY, plant TEXT NOT NULL, storage_location TEXT NOT NULL, storage_location_desc TEXT, UNIQUE(plant, storage_location))`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_uom (id SERIAL PRIMARY KEY, uom_code TEXT UNIQUE NOT NULL, uom_description TEXT)`);
@@ -47,6 +47,8 @@ const initDB = async () => {
         }
 
         // Indexes
+        // Add material_code column if not exists (for existing DBs)
+        await sequelize.query(`ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS material_code TEXT`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_ah_request ON approval_history(request_id)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)`).catch(() => {});
         await sequelize.query(`CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_logs(request_id)`).catch(() => {});

@@ -99,7 +99,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
     control_code:req.control_code||'', material_group:req.material_group||'',
     long_description:req.long_description||'', plant:req.plant||'',
     storage_location:req.storage_location||'', purchase_group:req.purchase_group||'',
-    uom: req.uom || ''
+    uom: req.uom || '', material_code: req.material_code || ''
   });
   const [history, setHistory]   = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -521,6 +521,21 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
               </h3>
               
               <div className="space-y-2">
+                {/* Material Code — IT Team only, required before final approval */}
+                {isIT && (
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black uppercase text-slate-400 tracking-wider ml-1">
+                      SAP Material Code *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1000012345"
+                      className="w-full px-2 py-1.5 bg-white border border-indigo-200 rounded-lg text-[12px] font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all shadow-inner"
+                      value={editData.material_code}
+                      onChange={e => setEditData(p => ({...p, material_code: e.target.value}))}
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-[8px] font-black uppercase text-slate-400 tracking-wider ml-1">Reviewer Remarks</label>
                   <textarea rows={3} placeholder="Type your comments here..."

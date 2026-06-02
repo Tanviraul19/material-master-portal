@@ -408,6 +408,9 @@ const MyRequests = () => {
                       {/* Status Badge + Date */}
                       <div className="text-center">
                         <span className={statusBadge(req.status)}>{simplifyStatus(req.status)}</span>
+                        {req.status === 'Approved' && req.material_code && (
+                          <p className="text-[10px] font-black text-indigo-600 mt-0.5 font-mono">{req.material_code}</p>
+                        )}
                         <p className="text-[10px] text-slate-400 mt-1">
                           {req.created_at ? new Date(req.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}
                         </p>
