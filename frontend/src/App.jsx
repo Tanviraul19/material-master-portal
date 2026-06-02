@@ -69,25 +69,7 @@ const App = () => {
             </Route>
           </Route>
 
-          <Route path="/unauthorized" element={
-            <div className="h-screen flex flex-col items-center justify-center gap-4">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🔒</div>
-                <h1 className="text-2xl font-black text-red-500 mb-2">403 — Unauthorized Access</h1>
-                <p className="text-slate-500 text-sm mb-6">
-                  You don't have permission to view this page.<br/>
-                  You may be logged in with a different account.<br/>
-                  Please sign out and login with the correct account.
-                </p>
-                <button
-                  onClick={() => { localStorage.removeItem('user'); window.location.href = '/login'; }}
-                  className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-lg"
-                >
-                  Sign Out &amp; Login Again
-                </button>
-              </div>
-            </div>
-          } />
+          <Route path="/unauthorized" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
