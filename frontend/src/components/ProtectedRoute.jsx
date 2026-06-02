@@ -16,10 +16,9 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Auto sign out and redirect to login with original URL
-    // This handles the case where wrong role is logged in when clicking email links
-    localStorage.removeItem('user');
-    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+    // Wrong role for this page — redirect to unauthorized page
+    // Do NOT clear localStorage here — user is still logged in with correct credentials
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;
