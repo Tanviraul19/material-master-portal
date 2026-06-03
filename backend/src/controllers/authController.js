@@ -55,6 +55,7 @@ exports.createUser = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
+    try { await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_plants TEXT`); } catch (_) {}
     const users = await db.query('SELECT id, full_name, username, email, personal_email, role, department, assigned_plants, is_active, last_login FROM users ORDER BY id ASC');
     res.status(200).json(users);
   } catch (err) { res.status(500).json({ error: err.message }); }
