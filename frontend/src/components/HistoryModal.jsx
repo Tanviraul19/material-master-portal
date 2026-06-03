@@ -1,6 +1,6 @@
-import React from 'react';
-import api from '../services/api';
-import { Loader2, X, Eye, History, CheckCircle2 } from 'lucide-react';
+import React from "react";
+import api from "../services/api";
+import { Loader2, X, Eye, History, CheckCircle2 } from "lucide-react";
 const HistoryModal = ({ req, onClose }) => {
   const [history, setHistory] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -71,4 +71,21 @@ const HistoryModal = ({ req, onClose }) => {
                         <span className="text-[12px] font-semibold text-slate-700">{h.approver_name || 'User'}</span>
                         <span className="text-[10px] text-slate-400">({h.approver_role || h.stage})</span>
                       </div>
+                      <span className="text-[10px] text-slate-400">{h.created_at ? new Date(h.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</span>
+                    </div>
+                    {h.comments && <p className="text-[11px] text-slate-600 italic">"{h.comments}"</p>}
+                  </div>
+                ))}
+                {history.length === 0 && <p className="text-[12px] text-slate-400 text-center py-4">No history found</p>}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="btn btn-secondary w-full">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 export default HistoryModal;
