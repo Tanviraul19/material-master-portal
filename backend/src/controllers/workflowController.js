@@ -96,12 +96,7 @@ async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, 
     // C. Notify next approver in queue
     if (nextApproverRole && nextStatus !== 'Approved' && nextStatus !== 'Rejected') {
       const approver = await getApproverForRole(nextApproverRole, freshRequest.plant);
-      // Use personal_email of approver if available
-      const [approverFull] = await sequelize.query(
-        `SELECT email, personal_email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`,
-        { replacements: [nextApproverRole], type: sequelize.constructor.QueryTypes.SELECT }
-      );
-      const approverEmail = approverFull?.personal_email || approverFull?.email || approver?.email;
+      const approverEmail = approver?.personal_email || approver?.email;
       if (approverEmail) {
         try {
           await emailService.sendWorkflowStageEmail(approverEmail, nextApproverRole, freshRequest);
@@ -416,7 +411,7 @@ exports.handleApproval = async (req, res) => {
 
         nextStatus = mapping.status; currentStage = sbStage; nextApproverRole = mapping.role;
         await sequelize.query(`UPDATE material_requests SET it_sendback_to_user = 0, sendback_stage = NULL, sendback_role = NULL WHERE id = ?`, { replacements: [id], transaction: t });
-        await notifyRoleUsers(t, nextApproverRole, id, 'RESUBMITTED', `${request.req_number} corrected and resubmitted. Awaiting ${nextApproverRole}.`);
+        await notifyRoleUsers(t, nextApproverRole, id, "RESUBMITTED", `${request.req_number} corrected and resubmitted. Awaiting ${nextApproverRole}.`, request.plant);
       }
     }
 
