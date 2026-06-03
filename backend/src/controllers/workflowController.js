@@ -114,11 +114,11 @@ exports.getPendingApprovals = async (req, res) => {
     'Plant Head': 'Pending Plant Head', 'Mechanical Team': 'Pending Department',
     'Electrical Team': 'Pending Department', 'Purchase Team': 'Pending Purchase',
     'GST Team': 'Pending GST', 'Store Head': 'Pending Store Head',
-    'IT Team': 'Pending IT Final Approval', 'Super Admin': null,
+    'IT Team': 'Pending IT Final Approval', 'Super Admin': null, 'Admin': null,
   };
   try {
     let results;
-    if (userRole === 'Super Admin' || userRole === 'IT Team') {
+    if (userRole === 'Super Admin' || userRole === 'IT Team' || userRole === 'Admin') {
       results = await db.query(
         `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id ORDER BY mr.created_at DESC LIMIT 100`
       );
@@ -247,7 +247,7 @@ exports.handleApproval = async (req, res) => {
       'IT Team': 'Pending IT Final Approval', 'Super Admin': null,
     };
     const expectedStatus = allowedMap[userRole];
-    const isAdmin = userRole === 'Super Admin' || userRole === 'IT Team';
+    const isAdmin = userRole === 'Super Admin' || userRole === 'IT Team' || userRole === 'Admin';
     if (!isAdmin && expectedStatus && request.status !== expectedStatus) {
       if (!(userRole === 'IT Team' && request.status === 'Sent Back To User' && request.it_sendback_to_user)) {
         await t.rollback();
@@ -329,7 +329,7 @@ exports.handleApproval = async (req, res) => {
     // Workflow routing
     if (!reroutedToDept) {
       if (action === 'APPROVE') {
-        if (userRole === 'Plant Head' || (userRole === 'Super Admin' && request.status === 'Pending Plant Head')) {
+        if (userRole === 'Plant Head' || ((userRole === 'Super Admin' || userRole === 'Admin') && request.status === 'Pending Plant Head')) {
           // Only ZMIS (Mechanical) and ZEIS (Electrical) go to dept team
           // All other types (ZCOM, ZPAC, ZPRT etc.) skip dept → go directly to Purchase Team
           const matType = request.material_type?.toUpperCase();
@@ -368,6 +368,7 @@ exports.handleApproval = async (req, res) => {
           nextStatus = 'Approved'; currentStage = 'Completed'; nextApproverRole = null;
           await createNotification(t, { user_id: request.requester_id, request_id: id, type: 'APPROVED', message: `Your request ${request.req_number} has been FULLY APPROVED!` });
           await notifyRoleUsers(t, 'Super Admin', id, 'APPROVED', `${request.req_number} fully approved by IT Team.`);
+          await notifyRoleUsers(t, 'Admin', id, 'APPROVED', `${request.req_number} fully approved by IT Team.`);
         } else if (isAdmin) {
           nextStatus = 'Approved'; currentStage = 'Completed'; nextApproverRole = null;
         }

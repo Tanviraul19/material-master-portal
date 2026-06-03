@@ -330,13 +330,18 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats]       = useState({ total: 0, pending: 0, approved: 0, rejected: 0, timeline: [], activity: [] });
   const [requests, setRequests] = useState([]);
+  const [pendingQueue, setPendingQueue] = useState([]);
   const [search, setSearch]     = useState('');
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [sRes, rRes] = await Promise.all([api.get('/stats'), api.get('/requests')]);
+        const [sRes, rRes, pRes] = await Promise.all([
+          api.get('/stats'), 
+          api.get('/requests'),
+          api.get('/workflow/pending').catch(() => ({ data: [] }))
+        ]);
         const s = sRes.data || {};
         setStats({
           total: s.total ?? 0, pending: s.pending ?? 0,
@@ -346,12 +351,24 @@ const Dashboard = () => {
         });
         const d = rRes.data;
         setRequests(Array.isArray(d) ? d : (d?.requests ?? []));
+        const p = pRes?.data;
+        setPendingQueue(Array.isArray(p) ? p : []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
   }, []);
 
-  const filtered = (Array.isArray(requests) ? requests : []).filter(r =>
+  const combinedRequests = [...(Array.isArray(requests) ? requests : [])];
+  (Array.isArray(pendingQueue) ? pendingQueue : []).forEach(p => {
+    if (!combinedRequests.some(r => r.id === p.id)) {
+      combinedRequests.push(p);
+    }
+  });
+  
+  // Sort combined requests by date descending
+  combinedRequests.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const filtered = combinedRequests.filter(r =>
     (r.req_number ?? '').toLowerCase().includes(search.toLowerCase()) ||
     (r.description ?? r.material_name ?? '').toLowerCase().includes(search.toLowerCase())
   );
@@ -481,7 +498,7 @@ const Dashboard = () => {
         </div>
 
         {/* Pending Approvals widget */}
-        <PendingApprovalsWidget requests={requests} loading={loading} />
+        <PendingApprovalsWidget requests={pendingQueue} loading={loading} />
       </div>
 
       {/* ── Recent Requests + CTA ───────────────────────────────────────── */}

@@ -102,7 +102,7 @@ exports.getRequests = async (req, res) => {
     WHERE 1=1`;
     const params = [];
 
-    if (userRole !== 'Super Admin' && userRole !== 'IT Team') {
+    if (userRole !== 'Super Admin' && userRole !== 'IT Team' && userRole !== 'Admin') {
       sql += ' AND mr.requester_id = ?';
       params.push(userId);
     }
