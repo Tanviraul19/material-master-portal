@@ -1,0 +1,21 @@
+0 verbose cli /usr/bin/node /usr/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@10.8.2
+2 info using node@v20.20.2
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/home/user/.npmrc
+5 silly config load:file:/usr/etc/npmrc
+6 verbose title npm exec eslint frontend/src/components/HistoryModal.jsx
+7 verbose argv "exec" "--" "eslint" "frontend/src/components/HistoryModal.jsx"
+8 verbose logfile logs-max:10 dir:/home/user/.npm/_logs/2026-06-03T18_49_15_677Z-
+9 verbose logfile /home/user/.npm/_logs/2026-06-03T18_49_15_677Z-debug-0.log
+10 silly logfile done cleaning log files
+11 silly packumentCache heap:1002438656 maxSize:250609664 maxEntrySize:125304832
+12 http fetch GET 200 https://registry.npmjs.org/eslint 130ms (cache revalidated)
+13 silly packumentCache heap:1002438656 maxSize:250609664 maxEntrySize:125304832
+14 silly packumentCache heap:1002438656 maxSize:250609664 maxEntrySize:125304832
+15 verbose cwd /home/user
+16 verbose os Linux 6.1.158+
+17 verbose node v20.20.2
+18 verbose npm  v10.8.2
+19 verbose exit 2
+20 verbose code 2

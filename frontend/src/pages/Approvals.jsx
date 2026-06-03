@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircle2, CornerUpLeft, Eye, Clock, AlertCircle,
   ChevronRight, User, Mail, Calendar, Info,
-  ArrowRight, RefreshCw, Loader2, Download, Printer, ChevronDown
+  ArrowRight, RefreshCw, Loader2, Download, Printer, ChevronDown, History
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import api from '../services/api';
