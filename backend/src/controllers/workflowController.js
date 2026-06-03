@@ -36,7 +36,7 @@ async function createNotification(t, { user_id, request_id, type, message }) {
   );
 }
 
-async function notifyRoleUsers(t, role, request_id, type, message) {
+async function notifyRoleUsers(t, role, request_id, type, message, plant = null) {
   const users = await sequelize.query(
     `SELECT id FROM users WHERE role = ? AND is_active = TRUE`,
     { replacements: [role], type: sequelize.constructor.QueryTypes.SELECT }
@@ -47,11 +47,18 @@ async function notifyRoleUsers(t, role, request_id, type, message) {
 function getDeptRole(department) { return DEPT_ROLE_MAP[department] || null; }
 function needsDeptApproval(department) { return HAS_DEPT_APPROVER.includes(department); }
 
-async function getApproverForRole(role) {
-  const [u] = await sequelize.query(
-    `SELECT full_name, email, role FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`,
-    { replacements: [role], type: sequelize.constructor.QueryTypes.SELECT }
-  );
+async function getApproverForRole(role, plant = null) {
+  let query = `SELECT full_name, email, role FROM users WHERE role = ? AND is_active = TRUE`;
+  let replacements = [role];
+
+  if (role === 'Plant Head' && plant) {
+    query += ` AND (assigned_plants IS NULL OR assigned_plants = '' OR assigned_plants LIKE ?)`;
+    replacements.push(`%${plant}%`);
+  }
+  
+  query += ` LIMIT 1`;
+
+  const [u] = await sequelize.query(query, { replacements, type: sequelize.constructor.QueryTypes.SELECT });
   return u || { full_name: role, email: '', role };
 }
 
@@ -88,7 +95,7 @@ async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, 
 
     // C. Notify next approver in queue
     if (nextApproverRole && nextStatus !== 'Approved' && nextStatus !== 'Rejected') {
-      const approver = await getApproverForRole(nextApproverRole);
+      const approver = await getApproverForRole(nextApproverRole, freshRequest.plant);
       // Use personal_email of approver if available
       const [approverFull] = await sequelize.query(
         `SELECT email, personal_email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`,
@@ -162,7 +169,7 @@ async function resolveCurrentApprover(r) {
   };
   const role = stageRoleMap[r.current_stage];
   if (!role) return { current_approver_name: r.assigned_approver || r.current_stage, current_approver_email: '', current_approver_role: r.current_stage };
-  const approver = await getApproverForRole(role);
+  const approver = await getApproverForRole(role, r.plant);
   return { current_approver_name: approver.full_name, current_approver_email: approver.email, current_approver_role: approver.role };
 }
 
@@ -336,7 +343,7 @@ exports.handleApproval = async (req, res) => {
           const needsDept = (matType === 'ZMIS' || matType === 'ZEIS') && needsDeptApproval(request.department);
           if (needsDept) {
             nextStatus = 'Pending Department'; currentStage = 'Department'; nextApproverRole = getDeptRole(request.department);
-            await notifyRoleUsers(t, nextApproverRole, id, 'APPROVAL_NEEDED', `${request.req_number} approved by Plant Head. Awaiting ${nextApproverRole}.`);
+            await notifyRoleUsers(t, nextApproverRole, id, "APPROVAL_NEEDED", `${request.req_number} approved by Plant Head. Awaiting ${nextApproverRole}.`, request.plant);
           } else {
             nextStatus = 'Pending Purchase'; currentStage = 'Purchase Team'; nextApproverRole = 'Purchase Team';
             await notifyRoleUsers(t, 'Purchase Team', id, 'APPROVAL_NEEDED', `${request.req_number} approved by Plant Head. Forwarded directly to Purchase Team.`);
@@ -416,7 +423,7 @@ exports.handleApproval = async (req, res) => {
     // Resolve approver name
     let assignedApproverName = request.assigned_approver;
     if (nextApproverRole) {
-      const nextApprover = await getApproverForRole(nextApproverRole);
+      const nextApprover = await getApproverForRole(nextApproverRole, request.plant);
       assignedApproverName = nextApprover.full_name;
     } else if (nextStatus === 'Approved' || nextStatus === 'Rejected' || currentStage === 'Completed') {
       assignedApproverName = null;

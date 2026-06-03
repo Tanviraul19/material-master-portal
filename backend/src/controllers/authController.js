@@ -20,16 +20,17 @@ exports.login = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
-  const { full_name, username, email, personal_email, password, role, department } = req.body;
+  const { full_name, username, email, personal_email, password, role, department, assigned_plants } = req.body;
   console.log(`\n[CreateUser] name="${full_name}" work_email="${email}" personal_email="${personal_email}" role="${role}"`);
   try {
     // Ensure personal_email column exists
     try { await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS personal_email TEXT`); } catch (_) {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_plants TEXT`); } catch (_) {}
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.execute(
-      'INSERT INTO users (full_name, username, email, personal_email, password_hash, role, department) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [full_name, username, email, personal_email || null, hashedPassword, role, department]
+      'INSERT INTO users (full_name, username, email, personal_email, password_hash, role, department, assigned_plants) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [full_name, username, email, personal_email || null, hashedPassword, role, department, assigned_plants || null]
     );
     const [newUser] = await db.query('SELECT id, username, role, email FROM users WHERE email = ?', [email]);
     console.log(`[CreateUser] ✅ User created id=${newUser?.id}`);
@@ -54,17 +55,18 @@ exports.createUser = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await db.query('SELECT id, full_name, username, email, personal_email, role, department, is_active, last_login FROM users ORDER BY id ASC');
+    const users = await db.query('SELECT id, full_name, username, email, personal_email, role, department, assigned_plants, is_active, last_login FROM users ORDER BY id ASC');
     res.status(200).json(users);
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  const { full_name, role, department, is_active, personal_email } = req.body;
+  const { full_name, role, department, is_active, personal_email, assigned_plants } = req.body;
   try {
-    await db.execute('UPDATE users SET full_name = ?, role = ?, department = ?, is_active = ?, personal_email = ? WHERE id = ?',
-      [full_name, role, department, is_active ? true : false, personal_email || null, id]);
+    try { await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_plants TEXT`); } catch (_) {}
+    await db.execute('UPDATE users SET full_name = ?, role = ?, department = ?, is_active = ?, personal_email = ?, assigned_plants = ? WHERE id = ?',
+      [full_name, role, department, is_active ? true : false, personal_email || null, assigned_plants || null, id]);
     const [updated] = await db.query('SELECT id, full_name, role FROM users WHERE id = ?', [id]);
     res.status(200).json(updated);
   } catch (err) { res.status(500).json({ error: err.message }); }

@@ -21,13 +21,13 @@ const UserManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser]   = useState(null);
   const [formData, setFormData]   = useState({
-    full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: ''
+    full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '', assigned_plants: ''
   });
   
   // Ensure form is always fresh when modal opens for Create (not Edit)
   const openCreateModal = () => {
     setEditUser(null);
-    setFormData({ full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '' });
+    setFormData({ full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '', assigned_plants: '' });
     setShowModal(true);
   };
 
@@ -77,7 +77,7 @@ const UserManagement = () => {
   };
 
   const resetForm = () => {
-    setFormData({ full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '' });
+    setFormData({ full_name: '', username: '', email: '', personal_email: '', password: '', role: 'User', department: '', assigned_plants: '' });
     setEditUser(null);
   };
 
@@ -304,6 +304,19 @@ const UserManagement = () => {
                     />
                   </div>
                 </div>
+
+                {formData.role === 'Plant Head' && (
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Assigned Plants</label>
+                    <input
+                      className="input w-full"
+                      value={formData.assigned_plants}
+                      onChange={e => setFormData({ ...formData, assigned_plants: e.target.value })}
+                      placeholder="e.g. 1000, 1001, 1100 (comma separated)"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Leave empty to receive emails for ALL plants.</p>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-2 pb-2">
