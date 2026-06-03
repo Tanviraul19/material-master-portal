@@ -38,7 +38,8 @@ exports.createRequest = async (req, res) => {
 
     // ── Get Plant Head ────────────────────────────────────────────────────
     const [plantHeadUser] = await db.query(
-      `SELECT id, full_name, email FROM users WHERE role = 'Plant Head' AND is_active = TRUE LIMIT 1`
+      `SELECT id, full_name, email FROM users WHERE role = 'Plant Head' AND is_active = TRUE AND (assigned_plants IS NULL OR assigned_plants = '' OR assigned_plants LIKE ?) LIMIT 1`,
+      [`%${plant}%`]
     );
     const assignedApprover = plantHeadUser ? plantHeadUser.full_name : 'Plant Head';
 
