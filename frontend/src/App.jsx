@@ -20,8 +20,12 @@ const DashboardRedirect = () => {
   
   if (!user) return <Navigate to="/login" replace />;
   
-  if (['IT Team', 'Super Admin', 'Admin'].includes(user.role)) {
+  if (['Super Admin', 'Admin'].includes(user.role)) {
     return <Dashboard />;
+  }
+  
+  if (['IT Team'].includes(user.role)) {
+    return <Navigate to="/approvals" replace />;
   }
   
   if (user.role === 'User') {

@@ -120,9 +120,13 @@ exports.getPendingApprovals = async (req, res) => {
   };
   try {
     let results;
-    if (userRole === 'Super Admin' || userRole === 'IT Team' || userRole === 'Admin') {
+    if (userRole === 'Super Admin' || userRole === 'Admin') {
       results = await db.query(
         `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id ORDER BY mr.created_at DESC LIMIT 100`
+      );
+    } else if (userRole === 'IT Team') {
+      results = await db.query(
+        `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = 'Pending IT Final Approval' ORDER BY mr.pending_since ASC LIMIT 100`
       );
     } else if (userRole === 'User') {
       results = await db.query(

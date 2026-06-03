@@ -1,3 +1,4 @@
+import HistoryModal from '../components/HistoryModal';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircle2, CornerUpLeft, Eye, Clock, AlertCircle,
@@ -93,6 +94,7 @@ const Timeline = ({ stages }) => (
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
+  const [showHistory, setShowHistory] = useState(false);
   const [comments, setComments] = useState('');
   const [editData, setEditData] = useState({
     material_type:req.material_type||'', description:req.description||'',
@@ -293,7 +295,8 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden space-y-2">
+    <div className="flex-1 flex flex-col h-full overflow-hidden space-y-2 relative">
+      {showHistory && <HistoryModal req={req} onClose={() => setShowHistory(false)} />}
       {/* Top: Horizontal Timeline */}
       <Timeline stages={stages} />
 
@@ -311,7 +314,12 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
                   {req.material_type} • {req.department || 'GENERAL'} • {req.requester_name || 'System'}
                 </p>
               </div>
-              <button onClick={onClose} className="p-1 px-3 py-1 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg text-[10px] font-black uppercase transition-all hover:bg-slate-100">✕ Close</button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowHistory(true)} className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-lg text-[10px] font-black uppercase transition-all">
+                  <History size={12}/> Review Changes
+                </button>
+                <button onClick={onClose} className="p-1 px-3 py-1 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg text-[10px] font-black uppercase transition-all hover:bg-slate-100">✕ Close</button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-4 pt-1">

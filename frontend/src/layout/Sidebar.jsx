@@ -23,7 +23,7 @@ const NAV_GROUPS = [
   {
     label: 'Main',
     items: [
-      { name: 'Dashboard',   path: '/',            icon: LayoutDashboard, roles: ['IT Team', 'Super Admin', 'Admin'] },
+      { name: 'Dashboard',   path: '/',            icon: LayoutDashboard, roles: ['Super Admin', 'Admin'] },
       { name: 'New Request', path: '/request/new', icon: FilePlus,        roles: ['User'] },
       { name: 'My Requests', path: '/requests/my', icon: ListTodo,        roles: ['User'] },
       { name: 'All Requests',path: '/approvals',   icon: CheckSquare,     roles: ['IT Team', 'Super Admin', 'Admin', 'Plant Head', 'Store Head', 'Purchase Team', 'Mechanical Team', 'Electrical Team', 'GST Team', 'Department'] },
