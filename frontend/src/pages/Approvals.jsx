@@ -296,15 +296,15 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full space-y-2 relative">
+    <div className="flex-1 flex flex-col h-full space-y-2 relative overflow-y-auto">
       {showHistory && <HistoryModal req={req} onClose={() => setShowHistory(false)} />}
       {/* Top: Horizontal Timeline */}
       <Timeline stages={stages} />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Left: details (8 columns) */}
-        <div className="lg:col-span-8 flex flex-col min-h-0 overflow-hidden">
-          <div className="card-flat p-3 border-slate-200 shadow-sm bg-white flex flex-col h-full">
+        <div className="lg:col-span-8 flex flex-col">
+          <div className="card-flat p-3 border-slate-200 shadow-sm bg-white">
             <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
               <div className="flex items-center gap-4">
                 <h2 className="text-[15px] font-black text-slate-900 font-mono tracking-tighter uppercase">{req.req_number}</h2>
@@ -323,7 +323,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-4 pt-1">
+            <div className="pr-1 no-scrollbar space-y-4 pt-1">
               {/* Info grid - Editable for IT Team, Read-only for others */}
               {isIT ? (
                 <div className="grid grid-cols-4 gap-2">
@@ -700,7 +700,7 @@ const Approvals = () => {
   const STAGE_BANNER = ['Submitted','Plant Head','Dept Team*','Purchase Team','GST Team','Store Head','IT Team'];
 
   return (
-    <div className="page-enter h-full flex flex-col overflow-hidden">
+    <div className="page-enter h-full flex flex-col">
       {!selected && (
         <div className="flex flex-col h-full space-y-3">
           {/* Header */}
