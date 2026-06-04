@@ -156,6 +156,25 @@ exports.getPendingApprovals = async (req, res) => {
           `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = ? AND mr.department = ? ORDER BY mr.pending_since ASC`,
           [statusFilter, deptMap[userRole]]
         );
+      } else if (userRole === 'Plant Head') {
+        // ── Plant Head: only see requests for their assigned plants ──
+        const [plantHead] = await db.query(
+          'SELECT assigned_plants FROM users WHERE id = ?',
+          [userId]
+        );
+        const assigned = plantHead?.assigned_plants?.trim();
+        let sql = `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = ?`;
+        const params = [statusFilter];
+        if (assigned) {
+          const plants = assigned.split(',').map(p => p.trim()).filter(Boolean);
+          if (plants.length > 0) {
+            const conditions = plants.map(() => `mr.plant LIKE ?`);
+            sql += ` AND (${conditions.join(' OR ')})`;
+            params.push(...plants.map(p => `%${p}%`));
+          }
+        }
+        sql += ` ORDER BY mr.pending_since ASC`;
+        results = await db.query(sql, params);
       } else {
         results = await db.query(
           `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = ? ORDER BY mr.pending_since ASC`,
