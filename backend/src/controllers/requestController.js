@@ -38,7 +38,7 @@ exports.createRequest = async (req, res) => {
 
     // ── Get Plant Head ────────────────────────────────────────────────────
     const [plantHeadUser] = await db.query(
-      `SELECT id, full_name, email FROM users WHERE role = 'Plant Head' AND is_active = TRUE AND (assigned_plants IS NULL OR assigned_plants = '' OR assigned_plants LIKE ?) LIMIT 1`,
+      `SELECT id, full_name, email, personal_email FROM users WHERE role = 'Plant Head' AND is_active = TRUE AND (assigned_plants IS NULL OR assigned_plants = '' OR assigned_plants LIKE ?) LIMIT 1`,
       [`%${plant}%`]
     );
     const assignedApprover = plantHeadUser ? plantHeadUser.full_name : 'Plant Head';
@@ -69,8 +69,7 @@ exports.createRequest = async (req, res) => {
     }
 
     // 2. Notify Plant Head — use personal_email if available
-    const [phUser] = await db.query('SELECT email, personal_email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1', ['Plant Head']);
-    const phEmailTarget = phUser?.personal_email || phUser?.email;
+    const phEmailTarget = plantHeadUser?.personal_email || plantHeadUser?.email;
     if (phEmailTarget) {
       try {
         await emailService.sendWorkflowStageEmail(phEmailTarget, 'Plant Head', newReq);
@@ -218,9 +217,14 @@ exports.resubmitRequest = async (req, res) => {
     const nextStage        = resolvedStage;
     const nextApproverRole = mapping.role;
 
-    const [approverUser] = await db.query(
-      `SELECT full_name, email FROM users WHERE role = ? AND is_active = TRUE LIMIT 1`, [nextApproverRole]
-    );
+    let query = `SELECT full_name, email, personal_email FROM users WHERE role = ? AND is_active = TRUE`;
+    let replacements = [nextApproverRole];
+    if (nextApproverRole === 'Plant Head') {
+      query += ` AND (assigned_plants IS NULL OR assigned_plants = '' OR assigned_plants LIKE ?)`;
+      replacements.push(`%${plant || request.plant}%`);
+    }
+    query += ` LIMIT 1`;
+    const [approverUser] = await db.query(query, replacements);
     const assignedApprover = approverUser ? approverUser.full_name : nextApproverRole;
 
     await sequelize.query(
