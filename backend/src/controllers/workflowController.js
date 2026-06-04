@@ -48,7 +48,7 @@ function getDeptRole(department) { return DEPT_ROLE_MAP[department] || null; }
 function needsDeptApproval(department) { return HAS_DEPT_APPROVER.includes(department); }
 
 async function getApproverForRole(role, plant = null) {
-  let query = `SELECT full_name, email, role FROM users WHERE role = ? AND is_active = TRUE`;
+  let query = `SELECT full_name, email, personal_email, role FROM users WHERE role = ? AND is_active = TRUE`;
   let replacements = [role];
 
   if (role === 'Plant Head' && plant) {
