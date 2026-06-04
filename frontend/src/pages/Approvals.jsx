@@ -296,12 +296,12 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden space-y-2 relative">
+    <div className="flex-1 flex flex-col h-full space-y-2 relative">
       {showHistory && <HistoryModal req={req} onClose={() => setShowHistory(false)} />}
       {/* Top: Horizontal Timeline */}
       <Timeline stages={stages} />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
         {/* Left: details (8 columns) */}
         <div className="lg:col-span-8 flex flex-col min-h-0 overflow-hidden">
           <div className="card-flat p-3 border-slate-200 shadow-sm bg-white flex flex-col h-full">
@@ -522,7 +522,7 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
         </div>
 
         {/* Right: actions (4 columns) */}
-        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0">
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0" style={{ alignSelf: 'start', position: 'sticky', top: '0' }}>
           <div className="card-flat p-3 border-slate-200 shadow-md bg-white flex flex-col justify-between h-fit min-h-[180px]">
             <div>
               <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-50 pb-1 flex items-center gap-2">

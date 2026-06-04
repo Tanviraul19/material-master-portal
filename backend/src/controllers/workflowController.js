@@ -352,14 +352,31 @@ exports.handleApproval = async (req, res) => {
       if (canReroute && newType !== oldType) {
         const newDept = MATTYPE_DEPT_MAP[newType];
         const deptRole = newDept ? getDeptRole(newDept) : null;
+        
+        // Always update department on the request
+        await sequelize.query(`UPDATE material_requests SET department = ?, material_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          { replacements: [newDept || '-', newType, id], transaction: t });
+        
         if (deptRole) {
-          await sequelize.query(`UPDATE material_requests SET department = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, { replacements: [newDept, id], transaction: t });
-          await sequelize.query(`PRAGMA table_info(material_requests)`, { type: sequelize.constructor.QueryTypes.SELECT, transaction: t });
+          // ZMIS↔ZEIS: Route to the matching department team
           await sequelize.query(`UPDATE material_requests SET resume_after_dept = ? WHERE id = ?`, { replacements: [userRole, id], transaction: t });
           nextStatus = 'Pending Department'; currentStage = 'Department'; nextApproverRole = deptRole; reroutedToDept = true;
           await insertAuditLog(t, { request_id: id, actor_id: userId, actor_name: actorName, actor_role: userRole, action: 'WORKFLOW_RESTART', field_name: 'material_type', old_value: oldType, new_value: newType, reason: `Rerouted to ${deptRole} due to type change.` });
           await insertHistory(t, { request_id: id, approver_id: userId, stage: request.current_stage, action: 'WORKFLOW_RESTART', comments: `Material type changed ${oldType}→${newType}. Awaiting ${deptRole}.`, fields_changed: JSON.stringify([{ field: 'material_type', old: oldType, new: newType }]), is_restart: 1 });
           await notifyRoleUsers(t, deptRole, id, 'APPROVAL_NEEDED', `${request.req_number}: type changed to ${newType} by ${actorName}. Dept review required.`);
+        } else {
+          // Any other type change (no department): Route directly back to the changer
+          const backToStageMap = {
+            'Store Head': { status: 'Pending Store Head', stage: 'Store Head', role: 'Store Head' },
+            'IT Team': { status: 'Pending IT Final Approval', stage: 'IT Team', role: 'IT Team' },
+          };
+          const backTo = backToStageMap[userRole];
+          if (backTo) {
+            nextStatus = backTo.status; currentStage = backTo.stage; nextApproverRole = backTo.role; reroutedToDept = true;
+            await insertAuditLog(t, { request_id: id, actor_id: userId, actor_name: actorName, actor_role: userRole, action: 'WORKFLOW_RESTART', field_name: 'material_type', old_value: oldType, new_value: newType, reason: `Type changed ${oldType}→${newType}. No dept needed. Returning to ${userRole}.` });
+            await insertHistory(t, { request_id: id, approver_id: userId, stage: request.current_stage, action: 'WORKFLOW_RESTART', comments: `Type changed ${oldType}→${newType}. No dept needed. Returning to ${userRole}.`, fields_changed: JSON.stringify([{ field: 'material_type', old: oldType, new: newType }]), is_restart: 1 });
+            await notifyRoleUsers(t, userRole, id, 'APPROVAL_NEEDED', `${request.req_number}: type changed to ${newType} by ${actorName}. Confirmation needed.`);
+          }
         }
       }
     }
