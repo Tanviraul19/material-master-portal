@@ -25,7 +25,7 @@ const DashboardRedirect = () => {
   }
   
   if (['IT Team'].includes(user.role)) {
-    return <Navigate to="/approvals" replace />;
+    return <Navigate to="/approvals/pending" replace />;
   }
   
   if (user.role === 'User') {
@@ -67,6 +67,7 @@ const App = () => {
               {/* Workflow Processing Roles */}
               <Route element={<ProtectedRoute allowedRoles={['IT Team', 'Super Admin', 'Admin', 'Plant Head', 'Store Head', 'Purchase Team', 'Mechanical Team', 'Electrical Team', 'GST Team', 'Department']} />}>
                  <Route path="/approvals" element={<ErrorBoundary><Approvals /></ErrorBoundary>} />
+                 <Route path="/approvals/pending" element={<ErrorBoundary><Approvals /></ErrorBoundary>} />
               </Route>
               
               <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />

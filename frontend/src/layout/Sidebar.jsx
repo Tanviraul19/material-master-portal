@@ -19,36 +19,37 @@ const ROLE_STYLE = {
   'User':           { pill: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',    dot: 'bg-slate-400' },
 };
 
-const NAV_GROUPS = [
-  {
-    label: 'Main',
-    items: [
-      { name: 'Dashboard',   path: '/',            icon: LayoutDashboard, roles: ['Super Admin', 'Admin'] },
-      { name: 'New Request', path: '/request/new', icon: FilePlus,        roles: ['User'] },
-      { name: 'My Requests', path: '/requests/my', icon: ListTodo,        roles: ['User'] },
-      { name: 'All Requests',path: '/approvals',   icon: CheckSquare,     roles: ['IT Team', 'Super Admin', 'Admin', 'Plant Head', 'Store Head', 'Purchase Team', 'Mechanical Team', 'Electrical Team', 'GST Team', 'Department'] },
-    ],
-  },
-  {
-    label: 'Admin',
-    items: [
-      { name: 'User Management',     path: '/users',    icon: Shield,          roles: ['IT Team', 'Super Admin', 'Admin'] },
-      { name: 'Import Descriptions', path: '/import',   icon: FileSpreadsheet, roles: ['IT Team', 'Super Admin', 'Admin'] },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { name: 'Settings', path: '/settings', icon: Settings, roles: ['IT Team', 'Super Admin', 'Admin'] },
-    ],
-  },
-];
-
 const Sidebar = () => {
   const { logout, role, user } = useAuth();
   const rs = ROLE_STYLE[role] || ROLE_STYLE['User'];
   const initials = (user?.full_name || user?.username || '?')
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  const navGroups = [
+    {
+      label: 'Main',
+      items: [
+        { name: 'Dashboard',   path: '/',            icon: LayoutDashboard, show: ['Super Admin', 'Admin'].includes(role) },
+        { name: 'New Request', path: '/request/new', icon: FilePlus,        show: role === 'User' },
+        { name: 'My Requests', path: '/requests/my', icon: ListTodo,        show: role === 'User' },
+        { name: 'All Requests',path: '/approvals',   icon: CheckSquare,     show: role !== 'User' },
+        { name: 'Pending Requests', path: '/approvals/pending', icon: ListTodo, show: role === 'IT Team' },
+      ],
+    },
+    {
+      label: 'Admin',
+      items: [
+        { name: 'User Management',     path: '/users',    icon: Shield,          show: ['IT Team', 'Super Admin', 'Admin'].includes(role) },
+        { name: 'Import Descriptions', path: '/import',   icon: FileSpreadsheet, show: ['IT Team', 'Super Admin', 'Admin'].includes(role) },
+      ],
+    },
+    {
+      label: 'System',
+      items: [
+        { name: 'Settings', path: '/settings', icon: Settings, show: ['IT Team', 'Super Admin', 'Admin'].includes(role) },
+      ],
+    },
+  ];
 
   return (
     <aside
@@ -88,8 +89,8 @@ const Sidebar = () => {
 
       {/* ── Navigation ───────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-6 space-y-1 px-3">
-        {NAV_GROUPS.map(group => {
-          const visibleItems = group.items.filter(i => i.roles.includes(role) || i.roles.includes('All'));
+        {navGroups.map(group => {
+          const visibleItems = group.items.filter(i => i.show);
           if (visibleItems.length === 0) return null;
 
           return (

@@ -112,6 +112,7 @@ async function dispatchWorkflowEmails({ action, actorRole, actorName, comments, 
 // ── GET /workflow/pending ─────────────────────────────────────────────────────
 exports.getPendingApprovals = async (req, res) => {
   const { userRole, userId } = req;
+  const { filter } = req.query;
   const stageMap = {
     'Plant Head': 'Pending Plant Head', 'Mechanical Team': 'Pending Department',
     'Electrical Team': 'Pending Department', 'Purchase Team': 'Pending Purchase',
@@ -125,9 +126,21 @@ exports.getPendingApprovals = async (req, res) => {
         `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id ORDER BY mr.created_at DESC LIMIT 100`
       );
     } else if (userRole === 'IT Team') {
-      results = await db.query(
-        `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = 'Pending IT Final Approval' ORDER BY mr.pending_since ASC LIMIT 100`
-      );
+      if (filter === 'all') {
+        results = await db.query(
+          `SELECT DISTINCT mr.*, u.full_name as requester_name, u.email as requester_email 
+           FROM material_requests mr 
+           LEFT JOIN users u ON mr.requester_id = u.id 
+           WHERE mr.status = 'Approved'
+              OR (mr.status = 'Rejected' AND mr.id IN (SELECT request_id FROM approval_history WHERE stage = 'IT Team' AND action = 'REJECT'))
+              OR (mr.status = 'Sent Back To User' AND mr.it_sendback_to_user = 1)
+           ORDER BY mr.updated_at DESC LIMIT 100`
+        );
+      } else {
+        results = await db.query(
+          `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.status = 'Pending IT Final Approval' ORDER BY mr.pending_since ASC LIMIT 100`
+        );
+      }
     } else if (userRole === 'User') {
       results = await db.query(
         `SELECT mr.*, u.full_name as requester_name, u.email as requester_email FROM material_requests mr LEFT JOIN users u ON mr.requester_id = u.id WHERE mr.requester_id = ? AND mr.status = 'Sent Back To User' ORDER BY mr.created_at DESC`,

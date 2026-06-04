@@ -1,5 +1,6 @@
 import HistoryModal from '../components/HistoryModal';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   CheckCircle2, CornerUpLeft, Eye, Clock, AlertCircle,
   ChevronRight, User, Mail, Calendar, Info,
@@ -591,6 +592,8 @@ const DetailPanel = ({ req, onClose, onActionDone, userRole }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const Approvals = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const isPendingOnly = location.pathname.includes('/pending');
   const [queue, setQueue]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState(null);
@@ -598,14 +601,17 @@ const Approvals = () => {
   const fetchQueue = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/workflow/pending');
+      const endpoint = user?.role === 'IT Team'
+        ? `/workflow/pending?filter=${isPendingOnly ? 'pending' : 'all'}`
+        : '/workflow/pending';
+      const r = await api.get(endpoint);
       const data = Array.isArray(r.data) ? r.data : [];
       setQueue(data);
       // If empty on first load, retry once after 2 seconds (handles Render spin-up delay)
       if (data.length === 0) {
         setTimeout(async () => {
           try {
-            const r2 = await api.get('/workflow/pending');
+            const r2 = await api.get(endpoint);
             const d2 = Array.isArray(r2.data) ? r2.data : [];
             if (d2.length > 0) setQueue(d2);
           } catch { /* ignore */ }
@@ -613,8 +619,8 @@ const Approvals = () => {
       }
     }
     catch { setQueue([]); } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { fetchQueue(); }, [fetchQueue]);
+  }, [user?.role, isPendingOnly]);
+  useEffect(() => { fetchQueue(); }, [fetchQueue, location.pathname]);
 
   const handleExport = async () => {
     try {
@@ -700,7 +706,11 @@ const Approvals = () => {
           {/* Header */}
           <div className="page-header shrink-0">
             <div>
-              <h1 className="page-title">Approval Queue</h1>
+              <h1 className="page-title">
+                {user?.role === 'IT Team'
+                  ? (isPendingOnly ? 'Pending IT Approvals' : 'IT Processed Requests')
+                  : 'Approval Queue'}
+              </h1>
               <p className="page-sub">
                 Viewing as: <span className="font-semibold text-blue-600">{user?.role??'Approver'}</span>
               </p>
