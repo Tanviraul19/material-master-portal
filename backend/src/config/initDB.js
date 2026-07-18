@@ -8,7 +8,7 @@ const initDB = async () => {
     try {
         if (isPostgres) {
             // ── PostgreSQL Tables ─────────────────────────────────────────
-            await sequelize.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, full_name TEXT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, department TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_login TIMESTAMP)`);
+            await sequelize.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, full_name TEXT, username TEXT UNIQUE, email TEXT UNIQUE, personal_email TEXT, password_hash TEXT, role TEXT, department TEXT, assigned_plants TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_login TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS material_requests (id SERIAL PRIMARY KEY, req_number TEXT UNIQUE, requester_id INTEGER, material_name TEXT, material_type TEXT, plant TEXT, storage_location TEXT, description TEXT, long_description TEXT, uom TEXT, purchase_group TEXT, material_group TEXT, control_code TEXT, valuation_category TEXT, valuation_class TEXT, department TEXT, status TEXT DEFAULT 'Pending Plant Head', current_stage TEXT DEFAULT 'Plant Head', priority TEXT DEFAULT 'Medium', it_sendback_to_user INTEGER DEFAULT 0, assigned_approver TEXT, pending_since TIMESTAMP, sendback_stage TEXT, sendback_role TEXT, resume_after_dept TEXT, material_code TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS approval_logs (id SERIAL PRIMARY KEY, request_id INTEGER, approver_id INTEGER, action TEXT, comments TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_plants (id SERIAL PRIMARY KEY, plant TEXT NOT NULL, storage_location TEXT NOT NULL, storage_location_desc TEXT, UNIQUE(plant, storage_location))`);
@@ -22,7 +22,7 @@ const initDB = async () => {
             await sequelize.query(`CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, actor_id INTEGER, actor_name TEXT, actor_role TEXT, action TEXT NOT NULL, field_name TEXT, old_value TEXT, new_value TEXT, reason TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
         } else {
             // ── SQLite Tables (local dev) ─────────────────────────────────
-            await sequelize.query(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, department TEXT, is_active BOOLEAN DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_login DATETIME)`);
+            await sequelize.query(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT, username TEXT UNIQUE, email TEXT UNIQUE, personal_email TEXT, password_hash TEXT, role TEXT, department TEXT, assigned_plants TEXT, is_active BOOLEAN DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_login DATETIME)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS material_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, req_number TEXT UNIQUE, requester_id INTEGER, material_name TEXT, material_type TEXT, plant TEXT, storage_location TEXT, description TEXT, long_description TEXT, uom TEXT, purchase_group TEXT, material_group TEXT, control_code TEXT, valuation_category TEXT, valuation_class TEXT, department TEXT, status TEXT DEFAULT 'Pending Plant Head', current_stage TEXT DEFAULT 'Plant Head', priority TEXT DEFAULT 'Medium', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS approval_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, request_id INTEGER, approver_id INTEGER, action TEXT, comments TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
             await sequelize.query(`CREATE TABLE IF NOT EXISTS master_plants (id INTEGER PRIMARY KEY AUTOINCREMENT, plant TEXT NOT NULL, storage_location TEXT NOT NULL, storage_location_desc TEXT, UNIQUE(plant, storage_location))`);
@@ -44,6 +44,18 @@ const initDB = async () => {
             if (!colNames.includes('sendback_stage'))      await sequelize.query(`ALTER TABLE material_requests ADD COLUMN sendback_stage TEXT`);
             if (!colNames.includes('sendback_role'))       await sequelize.query(`ALTER TABLE material_requests ADD COLUMN sendback_role TEXT`);
             if (!colNames.includes('resume_after_dept'))   await sequelize.query(`ALTER TABLE material_requests ADD COLUMN resume_after_dept TEXT`);
+
+            // SQLite: add missing users columns (SQLite does NOT support "ADD COLUMN IF NOT EXISTS")
+            const userCols = await sequelize.query(`PRAGMA table_info(users)`, { type: sequelize.constructor.QueryTypes.SELECT });
+            const userColNames = userCols.map(c => c.name);
+            if (!userColNames.includes('personal_email'))  await sequelize.query(`ALTER TABLE users ADD COLUMN personal_email TEXT`);
+            if (!userColNames.includes('assigned_plants')) await sequelize.query(`ALTER TABLE users ADD COLUMN assigned_plants TEXT`);
+        }
+
+        // PostgreSQL: self-heal users columns at boot (valid syntax on PG only)
+        if (isPostgres) {
+            await sequelize.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS personal_email TEXT`).catch(() => {});
+            await sequelize.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_plants TEXT`).catch(() => {});
         }
 
         // Indexes
