@@ -1,0 +1,7 @@
+backend/node_modules
+frontend/node_modules
+backend/.env
+frontend/.env
+.git
+**/npm-debug.log
+backend/database_backup.sqlite
